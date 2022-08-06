@@ -1,23 +1,26 @@
 #the mod name as displayed in-game
-displayName: "Java Mod Template"
+displayName: "Schematic Parse"
 
 #the internal name of your mod
-name: "example-java-mod"
+name: "SchematicParse"
 
 #your name
-author: "You"
+author: "BlackDeluxeCat"
 
 #the fully qualified main class of the mod
-main: "example.ExampleJavaMod"
+main: "sp.SchematicParse"
 
 #the mod description as seen in the mod dialog
-description: "A Mindustry Java mod template."
+description: "从蓝图详情页直接复制逻辑和信息板
+Copy processor/message in schematic info without placing it."
 
 #the mod version
 version: 1.0
 
 #the minimum game build required to run this mod
-minGameVersion: 129
+minGameVersion: 137
 
 #this is a java mod
 java: true
+
+hidden: true
