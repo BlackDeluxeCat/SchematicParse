@@ -11,11 +11,11 @@ author: "BlackDeluxeCat"
 main: "sp.SchematicParse"
 
 #the mod description as seen in the mod dialog
-description: "从蓝图详情页直接复制逻辑和信息板
-Copy processor/message in schematic info without placing it."
+description: "从蓝图详情页直接复制逻辑和信息板。蓝图消耗计算套件。
+Copy processor/message in schematic info without placing it. Schematic consumption computing tool. "
 
 #the mod version
-version: 1.0
+version: 2.0
 
 #the minimum game build required to run this mod
 minGameVersion: 137
