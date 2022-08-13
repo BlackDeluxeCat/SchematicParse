@@ -5,19 +5,16 @@ import arc.func.Cons;
 import arc.func.Floatf;
 import arc.math.Mathf;
 import arc.math.geom.*;
-import arc.scene.style.TextureRegionDrawable;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.util.*;
-import mindustry.ctype.UnlockableContent;
 import mindustry.game.EventType.*;
 import mindustry.game.*;
 import mindustry.gen.*;
 import mindustry.mod.*;
-import mindustry.type.Item;
-import mindustry.type.Liquid;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
+import mindustry.world.Block;
 import mindustry.world.blocks.heat.HeatProducer;
 import mindustry.world.blocks.logic.*;
 
@@ -33,7 +30,8 @@ public class SchematicParse extends Mod{
     public static int tmpIndex = 0, tmpIndex2 = 0;
     public static SchematicData data;
 
-    public static Table buttonsTable, selectTable, statsTable;
+    public static Table blocksTable, cfgTable, statsTable;
+    public static BaseDialog settingDialog;
     public static Cons<TextButton> consTextB = c -> {
         c.getLabel().setAlignment(Align.center);
         c.getLabel().setWrap(false);
@@ -42,12 +40,12 @@ public class SchematicParse extends Mod{
 
     public SchematicParse(){
         Log.info("SchematicParse Ready For Rush");
-        SchematicData.initHandlers();
-        selectTable = new Table();
-        data = new SchematicData();
+        cfgTable = new Table();
+        statsTable = new Table();
         //listen for game load event
         Events.on(ClientLoadEvent.class, e -> {
-            data.reset();
+            data = new SchematicData();
+            data.setDefaults();
             schelogic();
         });
     }
@@ -60,6 +58,9 @@ public class SchematicParse extends Mod{
     public static void schelogic(){
         SchematicsDialog.SchematicInfoDialog info = Reflect.get(SchematicsDialog.class, ui.schematics, "info");
         info.shown(Time.runTask(10f, () -> {
+            settingDialog = new BaseDialog("Schematic Parse Setting");
+            settingDialog.addCloseButton();
+
             Label l = info.find(e -> e instanceof Label ll && ll.getText().toString().contains("[[" + Core.bundle.get("schematic") + "] "));
             if(l != null){
                 String schename = l.getText().toString().replace("[[" + Core.bundle.get("schematic") + "] ", "");
@@ -70,8 +71,7 @@ public class SchematicParse extends Mod{
                     info.cont.table(spt -> {
                         spt.name = "ScheParseTable";
                         spt.table(t -> {
-                            buttonsTable = t;
-                            t.defaults().uniform();
+                            t.defaults().uniform().fill();
                             t.button("" + Iconc.zoom + Iconc.blockMicroProcessor + Iconc.blockMessage, Styles.flatt, () -> {}).with(b -> {
                                 b.getLabel().setWrap(false);
                                 b.clicked(() -> {
@@ -130,97 +130,121 @@ public class SchematicParse extends Mod{
                                         }
                                     });
                                 });
-                            }).height(40f).with(c -> {
-                                c.getLabel().setWrap(false);
-                                c.getLabelCell().pad(2);
-                            });
-                        });
+                            }).height(40f).with(consTextB);
 
-                        spt.pane(t -> {
-                            statsTable = t;
-                            t.setBackground(Styles.grayPanel);
-                            t.margin(4f);
-                            t.defaults().uniform().left().pad(1f).fill();
-
-                            tmpIndex = 0;
-                            for(var item : content.items()){
-                                if(!data.getItemDisplay(item.id, -1)) continue;
-                                t.button("", Styles.flatt, () -> rebuildContentSelect(item)).with(b -> {
-                                    b.getLabel().setText(() -> {
-                                        float amt = data.getItem(item.id);
-                                        return item.emoji() + (amt > 0f ? "+" : "") + Strings.autoFixed(amt, 2);
-                                    });
-                                    consTextB.get(b);
-                                });
-                                if(Mathf.mod(tmpIndex++, 4) == 3) t.row();
-                            }
-
-                            for(var item : content.liquids()){
-                                if(!data.getLiquidDisplay(item.id, -1)) continue;
-                                t.button("", Styles.flatt, () -> rebuildContentSelect(item)).with(b -> {
-                                    b.getLabel().setText(() -> {
-                                        float amt = data.getLiquid(item.id);
-                                        return item.emoji() + (amt > 0f ? "+" : "") + Strings.autoFixed(amt, 2);
-                                    });
-                                    consTextB.get(b);
-                                });
-                                if(Mathf.mod(tmpIndex++, 4) == 3) t.row();
-                            }
-
-                            t.add(Iconc.blockHeatSource + "+" + Strings.fixed(cumsum(sche, tile -> tile.block instanceof HeatProducer b ? b.heatOutput : 0f), 1));
                             t.row();
 
-                        }).with(p -> {
+                            t.button("" + Iconc.settings, Styles.flatt, () -> settingDialog.show()).height(32f).with(consTextB);
+                        });
+
+                        rebuildStats();
+
+                        spt.pane(statsTable).with(p -> {
                             p.setupFadeScrollBars(0.3f, 0.3f);
                             p.setFadeScrollBars(true);
                         });
-
-                        rebuildContentSelect(null);
-
-                        spt.pane(selectTable).with(p -> {
-                            p.setupFadeScrollBars(0.3f, 0.3f);
-                            p.setFadeScrollBars(true);
-                        });
-                    }).maxHeight(300f).growX();
+                    }).maxHeight(200f).growX();
                 }
             }
+
+            tmpIndex = 0;
+            settingDialog.cont.pane(p -> {
+                blocksTable = p;
+                p.defaults().uniform().pad(1f);
+                p.setBackground(Styles.grayPanel);
+                for(var block : content.blocks()){
+                    if(data.blocks[block.id] <= 0) continue;
+                    if(Mathf.mod(tmpIndex++, 8) == 0) p.row();
+                    var label = new Label("" + data.blocks[block.id]);
+                    label.setAlignment(Align.bottomRight);
+                    label.setFillParent(true);
+                    var image = new Image(block.uiIcon);
+                    image.setFillParent(true);
+                    p.button(b -> b.stack(image, label).fill(), Styles.clearNonei, () -> rebuildContentSelect(block)).size(48f);
+                }
+            }).with(p -> {
+                p.setupFadeScrollBars(0.3f, 0.3f);
+                p.setFadeScrollBars(true);
+            }).maxHeight(400f);
+
+            settingDialog.cont.row();
+
+            rebuildContentSelect(null);
+
+            settingDialog.cont.pane(cfgTable).with(p -> {
+                p.setupFadeScrollBars(0.3f, 0.3f);
+                p.setFadeScrollBars(true);
+            }).grow();
         }));
     }
 
-    public static void rebuildContentSelect(@Nullable UnlockableContent ucontent){
-        selectTable.clear();
+    public static void rebuildStats(){
+        statsTable.clear();
+        statsTable.setBackground(Styles.grayPanel);
+        statsTable.margin(4f);
+        statsTable.defaults().uniform().left().pad(1f).fill();
 
-        if(ucontent != null){
-            selectTable.table(t -> {
-                t.image(ucontent.uiIcon).size(16f);
-                t.add(ucontent.localizedName);
-                t.button("" + Iconc.cancel, Styles.flatt, () -> rebuildContentSelect(null)).with(consTextB);
+        tmpIndex = 0;
+        for(var item : content.items()){
+            if(Mathf.zero(data.items[item.id])) continue;
+            statsTable.label(() -> {
+                float amt = data.items[item.id];
+                return item.emoji() + (amt > 0f ? "+" : "") + Strings.autoFixed(amt, 2);
             });
-            selectTable.row();
+            if(Mathf.mod(tmpIndex++, 4) == 3) statsTable.row();
         }
 
+        for(var item : content.liquids()){
+            if(Mathf.zero(data.liquids[item.id])) continue;
+            statsTable.label(() -> {
+                float amt = data.liquids[item.id];
+                return item.emoji() + (amt > 0f ? "+" : "") + Strings.autoFixed(amt, 2);
+            });
+            if(Mathf.mod(tmpIndex++, 4) == 3) statsTable.row();
+        }
+
+        statsTable.add(Iconc.blockHeatSource + "+" + Strings.fixed(cumsum(block -> block instanceof HeatProducer b ? b.heatOutput * data.blocks[block.id] : 0f), 1));
+        statsTable.row();
+    }
+
+    public static void rebuildContentSelect(@Nullable Block block){
+        cfgTable.clear();
+        if(block == null) return;
+        cfgTable.table(t -> {
+            t.image(block.uiIcon).size(16f);
+            t.add(block.localizedName);
+            t.button("" + Iconc.cancel, Styles.flatt, () -> rebuildContentSelect(null)).with(consTextB).growX();
+        });
+        cfgTable.row();
+
         tmpIndex2 = 0;
-        selectTable.table(t -> {
-            t.defaults().uniform().fill();
+        cfgTable.table(t -> {
+            t.defaults().fill();
             t.setBackground(Styles.grayPanel);
-            for(var block : content.blocks()){
-                if(ucontent instanceof Item item && data.getItemDisplay(item.id, block.id)){
-                    if(Mathf.mod(tmpIndex2++, 5) == 0) t.row();
-                    t.button("" + data.blocks[block.id], new TextureRegionDrawable(block.uiIcon), Styles.flatTogglet, 16f, () -> data.putItemSign(item.id, block.id, !data.getItemSign(item.id, block.id))).with(consTextB).with(c -> c.setChecked(data.getItemSign(item.id, block.id)));
-                }else if(ucontent instanceof Liquid liquid && data.getLiquidDisplay(liquid.id, block.id)){
-                    if(Mathf.mod(tmpIndex2++, 5) == 0) t.row();
-                    t.button("" + data.blocks[block.id], new TextureRegionDrawable(block.uiIcon), Styles.flatTogglet, 16f, () -> data.putLiquidSign(liquid.id, block.id, !data.getLiquidSign(liquid.id, block.id))).with(consTextB).with(c -> c.setChecked(data.getItemSign(liquid.id, block.id)));
-                }else if(ucontent == null && data.blocks[block.id] > 0){
-                    if(Mathf.mod(tmpIndex2++, 5) == 0) t.row();
-                    t.button("" + data.blocks[block.id], new TextureRegionDrawable(block.uiIcon), Styles.flatTogglet, 16f, () -> data.putSign(block.id, !data.getSign(block.id))).with(consTextB).with(c -> c.setChecked(data.getSign(block.id)));
-                }
-            }
+            data.configs[block.id].each(c -> {
+                var button = t.button("", Styles.flatTogglet, () -> {}).with(consTextB).growX().get();
+                button.getLabel().setText(() -> "" + c.amount);
+                button.setChecked(true);
+                t.button("" + Iconc.copy, Styles.flatt, () -> {
+                    data.configs[block.id].add(c.copy());
+                    data.update();
+                    rebuildContentSelect(block);
+                }).with(consTextB).width(48f);
+                t.button("" + Iconc.cancel, Styles.flatt, () -> {
+                    data.configs[block.id].remove(c);
+                    data.update();
+                    rebuildContentSelect(block);
+                }).with(consTextB).disabled(c.isDefault).width(48f);;
+                t.row();
+                t.collapser(c::buildBlockConfig, false, button::isChecked).colspan(3);
+                t.row();
+            });
         });
     }
 
-    public static float cumsum(Schematic sche, Floatf<Schematic.Stile> func){
+    public static float cumsum(Floatf<Block> func){
         tmpFloat = 0;
-        sche.tiles.each(tile -> tmpFloat += func.get(tile));
+        content.blocks().each(block -> tmpFloat += func.get(block));
         return tmpFloat;
     }
 }
