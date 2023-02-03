@@ -15,7 +15,7 @@ description: "从蓝图详情页直接复制逻辑和信息板。蓝图消耗计
 Copy processor/message in schematic info without placing it. Schematic consumption computing tool. "
 
 #the mod version
-version: 3.0
+version: 4.0
 
 #the minimum game build required to run this mod
 minGameVersion: 137
