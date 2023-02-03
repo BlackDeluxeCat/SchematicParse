@@ -17,6 +17,7 @@ import mindustry.ui.dialogs.*;
 import mindustry.world.Block;
 import mindustry.world.blocks.heat.HeatProducer;
 import mindustry.world.blocks.logic.*;
+import sp.struct.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -30,6 +31,8 @@ public class SchematicParse extends Mod{
     public static int tmpIndex = 0, tmpIndex2 = 0;
     public static SchematicData data;
 
+    public static TextField.TextFieldFilter floatf = (field, c) -> TextField.TextFieldFilter.floatsOnly.acceptChar(field, c) || ((c == '-' && field.getCursorPosition() == 0 && !field.getText().contains("-")));
+
     public static Table blocksTable, cfgTable, statsTable;
     public static BaseDialog settingDialog;
     public static Cons<TextButton> consTextB = c -> {
@@ -42,11 +45,15 @@ public class SchematicParse extends Mod{
         Log.info("SchematicParse Ready For Rush");
         cfgTable = new Table();
         statsTable = new Table();
-        //listen for game load event
+
         Events.on(ClientLoadEvent.class, e -> {
             data = new SchematicData();
             data.setDefaults();
             schelogic();
+            Time.run(60f, () -> {
+                IOBody.init();
+                Calculator.ui.buildSelect();
+            });
         });
     }
 
@@ -56,6 +63,7 @@ public class SchematicParse extends Mod{
     }
 
     public static void schelogic(){
+        ui.schematics.buttons.button("Calculator", () -> Calculator.ui.show());
         SchematicsDialog.SchematicInfoDialog info = Reflect.get(SchematicsDialog.class, ui.schematics, "info");
         info.shown(Time.runTask(10f, () -> {
             settingDialog = new BaseDialog("Schematic Parse Setting");
