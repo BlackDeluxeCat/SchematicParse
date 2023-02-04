@@ -73,7 +73,7 @@ public class Calculator extends BaseDialog{
     }
 
     public void rebuild(){
-        bodies.sort(enitiy -> -enitiy.factors.size);
+        //bodies.sort(enitiy -> -enitiy.factors.size);
 
         usedTypes.clear();
 
@@ -81,7 +81,12 @@ public class Calculator extends BaseDialog{
 
         cont.table(t -> {
             t.name = "Add Table";
-            t.button("Add", () -> selectDialog.show()).growX().height(100f);
+            t.defaults().height(100f);
+            t.button("Add", () -> selectDialog.show()).growX();
+            t.button("" + Iconc.blockItemSource, () -> {
+                bodies.add(IOEnitiy.SourceIOEntity.source.copy());
+                rebuild();
+            }).size(100f);
         }).growX();
 
         cont.row();
@@ -105,7 +110,7 @@ public class Calculator extends BaseDialog{
                         //lcc.setColor(1f, 1f, 1f, 1f);
                         lcc.setFillParent(true);
                         lcc.setAlignment(Align.bottomLeft);
-                        var lc = new Label(() -> Strings.autoFixed(e.count, 4));
+                        var lc = new Label(() -> Strings.fixed(e.count, 3));
                         lc.setFillParent(true);
                         lcc.setStyle(Styles.outlineLabel);
                         lc.setAlignment(Align.bottomLeft);
@@ -155,6 +160,7 @@ public class Calculator extends BaseDialog{
                     tb.table(e::buildFactors);
 
                     e.factors.each(fac -> usedTypes.put(fac.type, (type, uit) -> fac.buildIcon(uit, false)));
+                    e.buckets.each(bucket -> bucket.factors.each(fac -> usedTypes.put(fac.type, (type, uit) -> fac.buildIcon(uit, false))));
 
                 }).top().maxHeight(300f).pad(4f);
 
@@ -164,7 +170,7 @@ public class Calculator extends BaseDialog{
 
         cont.row();
 
-        cont.table(t -> {
+        cont.pane(t -> {
             t.name = "Stat Table";
             final int[] co = {0};
             usedTypes.each((b, cons) -> {
@@ -176,7 +182,7 @@ public class Calculator extends BaseDialog{
                     l.setColor(Mathf.zero(f, 0.01f) ? Color.gray : f > 0 ? Color.green : Color.coral);
                 });
 
-                if(Mathf.mod(++co[0], 4) == 0) t.row();
+                if(Mathf.mod(++co[0], 6) == 0) t.row();
             });
         });
     }

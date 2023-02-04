@@ -3,9 +3,9 @@ package sp.struct;
 import arc.*;
 import arc.func.*;
 import arc.math.*;
+import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
-import arc.util.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.ctype.*;
@@ -26,6 +26,7 @@ import sp.struct.FactorIO.*;
 public class IOEnitiy{
     public UnlockableContent content;
     public Seq<FactorIO<?>> factors = new Seq<>();
+    public Seq<FactorBucket> buckets = new Seq<>();
     public float count = 1f;
 
     public IOEnitiy(UnlockableContent type){
@@ -33,11 +34,15 @@ public class IOEnitiy{
     }
 
     public float getRate(Object type){
-        return factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate : 0f);
+        return factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate : 0f) + buckets.sumf(bucket -> bucket.getRate(type));
     }
 
     public <T> void add(FactorIO<T> factor){
         factors.add(factor);
+    }
+
+    public void add(FactorBucket bucket){
+        buckets.add(bucket);
     }
 
     public float need(Object type, float need){
@@ -49,6 +54,12 @@ public class IOEnitiy{
     public IOEnitiy copy(){
         var copy = new IOEnitiy(this.content);
         this.factors.each(c -> copy.add(c.copy()));
+        this.buckets.each(bucket -> {
+            var copyb = new FactorBucket(bucket.name);
+            copyb.enable = bucket.enable;
+            bucket.factors.each(bf -> copyb.factors.add(bf.copy()));
+            copy.add(copyb);
+        });
         return copy;
     }
 
@@ -57,45 +68,89 @@ public class IOEnitiy{
             table.table(fac::build);
             table.row();
         });
+        buckets.each(bucket -> {
+            table.table(bucket::build);
+            table.row();
+        });
     }
 
-    public static class PlanIOEntity extends IOEnitiy{
+    public static class FactorBucket{
+        public String name;
+        public boolean enable = false;
+        public Seq<FactorIO<?>> factors = new Seq<>();
 
-        public PlanIOEntity(UnlockableContent type){
-            super(type);
+        public FactorBucket(String name){
+            this.name = name;
+        }
+
+        public FactorBucket(String name, FactorIO<?>... io){
+            this(name);
+            addAll(io);
+        }
+
+        public void add(FactorIO<?> factor){
+            factors.add(factor);
+        }
+
+        public void addAll(FactorIO<?>[] factor){
+            factors.add(factor);
+        }
+
+        public float getRate(Object type){
+            return enable ? factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate : 0f) : 0f;
+        }
+
+        public void build(Table table){
+            var enb = new TextButton(name, Styles.flatTogglet);
+            enb.clicked(() -> {
+                enable = !enable;
+                enb.setChecked(enable);
+            });
+            enb.setChecked(enable);
+            table.add(enb).grow();
+            var expand = table.button("" + Iconc.downOpen, Styles.flatTogglet, () -> {}).size(32f).get();
+            table.row();
+            table.collapser(t -> {
+                factors.each(fac -> {
+                    t.table(fac::build);
+                    t.row();
+                });
+            }, expand::isChecked).colspan(2);
         }
     }
 
     public static class SourceIOEntity extends IOEnitiy{
-        public static BaseDialog select = new BaseDialog("Source IO Select"){
-            {
-                addCloseButton();
-            }
-        };
+        public final static SourceIOEntity source = new SourceIOEntity(Blocks.itemSource);
+        public static BaseDialog select = new BaseDialog("Source IO Select"){{addCloseButton();}};
+
         public SourceIOEntity(UnlockableContent type){
             super(type);
         }
 
         @Override
         public void buildFactors(Table table){
-            table.button("" + Iconc.add, Styles.cleart, () -> {
-                select.cont.pane(p -> {
-                    final int[] i = {0};
-                    allFactors.each((obj, factor) -> {
-                        p.button(b -> factor.buildIcon(b, true), () -> {
-                            add(factor.copy());
-                            select.hide();
-                        }).pad(4f);
-                        if(Mathf.mod(++i[0], 12) == 0) p.row();
-                    });
-                }).grow();
-                select.show();
-            });
+            table.table(t -> {
+                t.button("" + Iconc.add, Styles.cleart, () -> {
+                    select.cont.pane(p -> {
+                        final int[] i = {0};
+                        allFactors.each((obj, factor) -> {
+                            p.button(b -> factor.buildIcon(b, true), () -> {
+                                add(factor.copy());
+                                select.hide();
+                            }).pad(4f);
+                            if(Mathf.mod(++i[0], 12) == 0) p.row();
+                        });
+                    }).grow();
+                    select.show();
+                }).growX();
 
-            table.button("" + Iconc.cancel, Styles.cleart, () -> {
-                factors.clear();
-                buildFactors(table);
-            }).size(16f);
+                t.button("" + Iconc.cancel, Styles.cleart, () -> {
+                    factors.clear();
+                    buildFactors(table);
+                }).size(16f);
+            }).growX();
+
+            table.row();
 
             factors.each(fac -> {
                 table.table(fac::build);
@@ -105,6 +160,13 @@ public class IOEnitiy{
                 }).size(16f);
                 table.row();
             });
+        }
+
+        @Override
+        public SourceIOEntity copy(){
+            var copy = new SourceIOEntity(this.content);
+            this.factors.each(c -> copy.add(c.copy()));
+            return copy;
         }
     }
 
@@ -172,10 +234,35 @@ public class IOEnitiy{
                 }else if(block instanceof Reconstructor r){
                     for(UnitType[] uta : r.upgrades){
                         if(uta == null || uta[0] == null || uta[1] == null) continue;
-                        e.add(new UnitIO(uta[0], -1f / ticks * timemul, false));
-                        e.add(new UnitIO(uta[1], 1f / ticks * timemul, false));
+                        e.add(new FactorBucket(uta[1].localizedName,
+                                new UnitIO(uta[0], -1f / ticks * timemul, true),
+                                new UnitIO(uta[1], 1f / ticks * timemul, true)
+                        ));
                     }
                 }
+            }
+        });
+
+        initruns.add(e -> {
+            if(e.content instanceof UnitFactory uf){
+                uf.plans.each(plan -> {
+                    var bucket = new FactorBucket(plan.unit.localizedName, new UnitIO(plan.unit, 1f / plan.time * timemul, true));
+                    for(var stack : plan.requirements){
+                        bucket.add(new ItemIO(stack.item, -stack.amount / plan.time * timemul, true));
+                    }
+                    e.add(bucket);
+                });
+            }
+
+            if(e.content instanceof UnitAssembler ua){
+                ua.plans.each(plan -> {
+                    var bucket = new FactorBucket(plan.unit.localizedName, new UnitIO(plan.unit, 1f / plan.time * timemul, true));
+                    for(var stack : plan.requirements){
+                        if(stack.item instanceof Block t) bucket.add(new BlockIO(t, -stack.amount / plan.time * timemul, true));
+                        if(stack.item instanceof UnitType t) bucket.add(new UnitIO(t, -stack.amount / plan.time * timemul, true));
+                    }
+                    e.add(bucket);
+                });
             }
         });
 
@@ -191,7 +278,11 @@ public class IOEnitiy{
             initruns.each(cons -> cons.get(entity));
         });
 
-        defaults.replace(io -> io.content == Blocks.itemSource ? new SourceIOEntity(Blocks.itemSource) : io);
+        Vars.content.items().each(type -> allFactors.put(type, new ItemIO(type, 0f, true)));
+        Vars.content.liquids().each(type -> allFactors.put(type, new LiquidIO(type, 0f, true)));
+        Vars.content.units().each(type -> allFactors.put(type, new UnitIO(type, 0f, true)));
+        Vars.content.blocks().each(type -> allFactors.put(type, new BlockIO(type, 0f, true)));
+        allFactors.put("power", new CustomIO("power", 0f, true));
     }
 
     //TODO generate customized IOEntity class.
