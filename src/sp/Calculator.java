@@ -15,14 +15,14 @@ import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 import sp.struct.*;
 
-import static sp.SchematicParse.consTextB;
+import static sp.SchematicParse.*;
 
 public class Calculator extends BaseDialog{
-    public static Calculator ui = new Calculator("@ui.title");
+    public static Calculator ui = new Calculator("@ui.calculator.title");
 
     public Seq<IOEnitiy> bodies = new Seq<>();
     public ObjectMap<Object, Cons2<Object, Table>> usedTypes = new ObjectMap<>();
-    public BaseDialog selectDialog = new BaseDialog("Select"), trimDialog = new BaseDialog("Trim");
+    public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), trimDialog = new BaseDialog("@ui.trim.title");
 
     public Calculator(String s){
         super(s);
@@ -82,8 +82,8 @@ public class Calculator extends BaseDialog{
         cont.table(t -> {
             t.name = "Add Table";
             t.defaults().height(100f);
-            t.button("Add", () -> selectDialog.show()).growX();
-            t.button("" + Iconc.blockItemSource, () -> {
+            t.button("@ui.addfactory", () -> selectDialog.show()).growX();
+            t.button(Iconc.blockItemSource + "\n" + Core.bundle.get("ui.addsource") , () -> {
                 bodies.add(IOEnitiy.SourceIOEntity.source.copy());
                 rebuild();
             }).size(100f);
@@ -126,7 +126,7 @@ public class Calculator extends BaseDialog{
                             tc.row();
 
                             tc.add().growX();
-                            tc.button("Trim", Styles.cleart, () -> {
+                            tc.button(uiTrim, Styles.cleari, 24f, () -> {
                                 trimDialog.cont.clear();
                                 trimDialog.cont.pane(p -> {
                                     final int[] co2 = {0};
@@ -144,7 +144,7 @@ public class Calculator extends BaseDialog{
                                     });
                                 });
                                 trimDialog.show();
-                            }).with(consTextB).height(32f);
+                            }).size(32f);
                             tc.row();
 
                             tc.add().growX();

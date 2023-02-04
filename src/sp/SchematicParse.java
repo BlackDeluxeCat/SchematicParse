@@ -3,6 +3,7 @@ package sp;
 import arc.*;
 import arc.func.Cons;
 import arc.math.geom.*;
+import arc.scene.style.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.util.*;
@@ -35,6 +36,7 @@ public class SchematicParse extends Mod{
 
     public SchematicParse(){
         Events.on(ClientLoadEvent.class, e -> {
+            initStyles();
             schelogic();
             Time.run(60f, () -> {
                 IOEnitiy.init();
@@ -48,8 +50,13 @@ public class SchematicParse extends Mod{
         Log.info("Loading some example content.");
     }
 
+    public static TextureRegionDrawable uiTrim;
+    public static void initStyles(){
+        uiTrim = new TextureRegionDrawable(Core.atlas.find("schematicparse-ui-balance"));
+    }
+
     public static void schelogic(){
-        ui.schematics.buttons.button("Calculator", () -> Calculator.ui.show());
+        ui.schematics.buttons.button("@ui.calculator", () -> Calculator.ui.show());
 
         SchematicsDialog.SchematicInfoDialog info = Reflect.get(SchematicsDialog.class, ui.schematics, "info");
 
@@ -130,6 +137,12 @@ public class SchematicParse extends Mod{
             });
         });
 
-        info.buttons.button("Calculator", () -> Calculator.ui.importShow(data.used));
+        info.buttons.button("@ui.calculator", () -> {}).with(b -> {
+            b.clicked(() -> {
+                Calculator.ui.importShow(data.used);
+                data.calculatorimported = true;
+            });
+            b.setDisabled(() -> data.calculatorimported);
+        });
     }
 }

@@ -26,6 +26,7 @@ import static sp.SchematicParse.consTextB;
 public class SchematicData{
     public Schematic sche;
     public boolean logicparsed = false;
+    public boolean calculatorimported = false;
     public ObjectIntMap<UnlockableContent> used = new ObjectIntMap<>();
 
     public void read(Schematic schematic){
@@ -35,5 +36,6 @@ public class SchematicData{
             used.put(tile.block, used.get(tile.block, 0) + 1);
         }
         logicparsed = false;
+        calculatorimported = false;
     }
 }

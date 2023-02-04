@@ -3,6 +3,7 @@ package sp.struct;
 import arc.*;
 import arc.func.*;
 import arc.math.*;
+import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
@@ -15,6 +16,7 @@ import mindustry.type.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 import mindustry.world.*;
+import mindustry.world.blocks.defense.turrets.*;
 import mindustry.world.blocks.environment.*;
 import mindustry.world.blocks.power.*;
 import mindustry.world.blocks.production.*;
@@ -121,34 +123,43 @@ public class IOEnitiy{
 
     public static class SourceIOEntity extends IOEnitiy{
         public final static SourceIOEntity source = new SourceIOEntity(Blocks.itemSource);
-        public static BaseDialog select = new BaseDialog("Source IO Select"){{addCloseButton();}};
+        public BaseDialog select = new BaseDialog("@ui.selectfactor.title"){{addCloseButton();}};
+        public boolean needRebuild = false;
 
         public SourceIOEntity(UnlockableContent type){
             super(type);
+            select.cont.clear();
+            select.cont.pane(p -> {
+                final int[] i = {0};
+                allFactors.each((obj, factor) -> {
+                    p.button(b -> factor.buildIcon(b, true), () -> {
+                        add(factor.copy());
+                        select.hide();
+                        needRebuild = true;
+                    }).pad(6f).size(196f, 32f);
+                    if(Mathf.mod(++i[0], 6) == 0) p.row();
+                });
+            }).grow().with(p -> {
+                p.setForceScroll(true, true);
+            });
         }
 
         @Override
         public void buildFactors(Table table){
+            table.clear();
             table.table(t -> {
-                t.button("" + Iconc.add, Styles.cleart, () -> {
-                    select.cont.pane(p -> {
-                        final int[] i = {0};
-                        allFactors.each((obj, factor) -> {
-                            p.button(b -> factor.buildIcon(b, true), () -> {
-                                add(factor.copy());
-                                select.hide();
-                            }).pad(4f);
-                            if(Mathf.mod(++i[0], 12) == 0) p.row();
-                        });
-                    }).grow();
-                    select.show();
-                }).growX();
+                t.button("" + Iconc.add, Styles.cleart, () -> select.show()).minSize(32f).grow();
 
                 t.button("" + Iconc.cancel, Styles.cleart, () -> {
                     factors.clear();
                     buildFactors(table);
-                }).size(16f);
-            }).growX();
+                }).size(32f);
+            }).growX().update(t -> {
+                if(needRebuild){
+                    buildFactors(table);
+                    needRebuild = false;
+                }
+            });
 
             table.row();
 
@@ -174,7 +185,7 @@ public class IOEnitiy{
     public static Seq<IOEnitiy> defaults = new Seq<>();
     public static Seq<Cons<IOEnitiy>> initruns = new Seq<>();
     /**Contains instances of every factor. Used for SourceIOEntity.*/
-    public static ObjectMap<Object, FactorIO<?>> allFactors = new ObjectMap<>();
+    public static OrderedMap<Object, FactorIO<?>> allFactors = new OrderedMap<>();
 
     public static void init(){
         float timemul = 60f;
@@ -266,6 +277,25 @@ public class IOEnitiy{
             }
         });
 
+        initruns.add(e -> {
+            if(e.content instanceof ReloadTurret rt){
+                if(rt.coolant instanceof ConsumeCoolant cc){
+                    Vars.content.liquids().each(liquid -> {
+                        if(liquid.coolant && !liquid.gas && liquid.temperature <= cc.maxTemp && liquid.flammability < cc.maxFlammability) e.add(new LiquidIO(liquid, -rt.coolant.amount, false));
+                    });
+                }
+
+                if(e.content instanceof ItemTurret it){
+                    it.ammoTypes.each((item, bullet) -> {
+                        var bucket = new FactorBucket(item.localizedName);
+                        bucket.add(new ItemIO(item, -1f / bullet.ammoMultiplier / it.reload * timemul * bullet.reloadMultiplier, true));
+                        bucket.add(new CustomIO("damage", bullet.estimateDPS() / it.reload * timemul * bullet.reloadMultiplier, true));
+                        e.add(bucket);
+                    });
+                }
+            }
+        });
+
         reGenerateDefaults();
 
         Events.on(EventType.ContentInitEvent.class, e -> reGenerateDefaults());
@@ -281,8 +311,12 @@ public class IOEnitiy{
         Vars.content.items().each(type -> allFactors.put(type, new ItemIO(type, 0f, true)));
         Vars.content.liquids().each(type -> allFactors.put(type, new LiquidIO(type, 0f, true)));
         Vars.content.units().each(type -> allFactors.put(type, new UnitIO(type, 0f, true)));
-        Vars.content.blocks().each(type -> allFactors.put(type, new BlockIO(type, 0f, true)));
+        Vars.content.blocks().each(type -> {
+            if(!type.hasBuilding()) return;
+            allFactors.put(type, new BlockIO(type, 0f, true));
+        });
         allFactors.put("power", new CustomIO("power", 0f, true));
+        allFactors.put("damage", new CustomIO("damage", 0f, true));
     }
 
     //TODO generate customized IOEntity class.
