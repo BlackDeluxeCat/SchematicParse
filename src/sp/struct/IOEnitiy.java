@@ -16,6 +16,7 @@ import mindustry.type.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 import mindustry.world.*;
+import mindustry.world.blocks.defense.*;
 import mindustry.world.blocks.defense.turrets.*;
 import mindustry.world.blocks.environment.*;
 import mindustry.world.blocks.power.*;
@@ -200,6 +201,9 @@ public class IOEnitiy{
                 if(block instanceof Pump p) ticks = p.consumeTime;
                 if(block instanceof Fracker f) ticks = f.itemUseTime;
                 if(block instanceof Reconstructor r) ticks = r.constructTime;
+                if(block instanceof OverdriveProjector op) ticks = op.useTime;
+                if(block instanceof MendProjector mp) ticks = mp.useTime;
+                if(block instanceof ForceProjector fp) ticks = fp.phaseUseTime;
 
                 for(var cons : block.consumers){
                     if(cons instanceof ConsumePower cp) e.add(new CustomIO("power", -cp.usage * timemul, !cons.booster));
@@ -281,7 +285,7 @@ public class IOEnitiy{
             if(e.content instanceof ReloadTurret rt){
                 if(rt.coolant instanceof ConsumeCoolant cc){
                     Vars.content.liquids().each(liquid -> {
-                        if(liquid.coolant && !liquid.gas && liquid.temperature <= cc.maxTemp && liquid.flammability < cc.maxFlammability) e.add(new LiquidIO(liquid, -rt.coolant.amount, false));
+                        if(liquid.coolant && !liquid.gas && liquid.temperature <= cc.maxTemp && liquid.flammability < cc.maxFlammability) e.add(new LiquidIO(liquid, -rt.coolant.amount * timemul, false));
                     });
                 }
 
