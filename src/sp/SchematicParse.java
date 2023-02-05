@@ -137,12 +137,13 @@ public class SchematicParse extends Mod{
             });
         });
 
-        info.buttons.button("@ui.calculator", () -> {}).with(b -> {
-            b.clicked(() -> {
+        info.buttons.button("@ui.calculator", () -> {
+            if(data.calculatorimported){
+                Calculator.ui.show();
+            }else{
                 Calculator.ui.importShow(data.used);
                 data.calculatorimported = true;
-            });
-            b.setDisabled(() -> data.calculatorimported);
+            }
         });
     }
 }

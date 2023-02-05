@@ -21,7 +21,7 @@ public class Calculator extends BaseDialog{
     public static Calculator ui = new Calculator("@ui.calculator.title");
 
     public Seq<IOEnitiy> bodies = new Seq<>();
-    public ObjectMap<Object, Cons2<Object, Table>> usedTypes = new ObjectMap<>();
+    public ObjectMap<Object, FactorIO<?>> usedTypes = new ObjectMap<>();
     public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), trimDialog = new BaseDialog("@ui.trim.title");
 
     public Calculator(String s){
@@ -130,13 +130,13 @@ public class Calculator extends BaseDialog{
                                 trimDialog.cont.clear();
                                 trimDialog.cont.pane(p -> {
                                     final int[] co2 = {0};
-                                    usedTypes.each((type, cons) -> {
+                                    usedTypes.each((type, fac) -> {
                                         float count = e.count;
                                         e.count = 0f;
                                         float need = e.need(type, -getFactor(type));
                                         e.count = count;
-                                        if(need < 0f) return;
-                                        p.button(trimt -> cons.get(type, trimt), () -> {
+                                        if(need <= 0f) return;
+                                        p.button(trimt -> fac.buildIcon(trimt, true), () -> {
                                             e.count = need;
                                             trimDialog.hide();
                                         }).minSize(48f).pad(4f);
@@ -159,8 +159,8 @@ public class Calculator extends BaseDialog{
 
                     tb.table(e::buildFactors);
 
-                    e.factors.each(fac -> usedTypes.put(fac.type, (type, uit) -> fac.buildIcon(uit, false)));
-                    e.buckets.each(bucket -> bucket.factors.each(fac -> usedTypes.put(fac.type, (type, uit) -> fac.buildIcon(uit, false))));
+                    e.factors.each(fac -> usedTypes.put(fac.type, fac));
+                    e.buckets.each(bucket -> bucket.factors.each(fac -> usedTypes.put(fac.type, fac)));
 
                 }).top().maxHeight(300f).pad(4f);
 
@@ -173,9 +173,9 @@ public class Calculator extends BaseDialog{
         cont.pane(t -> {
             t.name = "Stat Table";
             final int[] co = {0};
-            usedTypes.each((b, cons) -> {
+            usedTypes.each((b, fac) -> {
                 t.defaults().pad(4f);
-                t.table(it -> cons.get(b, it));
+                t.table(it -> fac.buildIcon(it, false));
                 t.add("").update(l -> {
                     float f = getFactor(b);
                     l.setText((f >= 0f ? "+":"") + Strings.autoFixed(f, 3));
@@ -184,7 +184,7 @@ public class Calculator extends BaseDialog{
 
                 if(Mathf.mod(++co[0], 6) == 0) t.row();
             });
-        });
+        }).maxHeight(300f);
     }
 
     public float getFactor(Object type){
