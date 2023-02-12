@@ -22,12 +22,13 @@ public class Calculator extends BaseDialog{
 
     public Seq<IOEnitiy> bodies = new Seq<>();
     public ObjectMap<Object, FactorIO<?>> usedTypes = new ObjectMap<>();
-    public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), trimDialog = new BaseDialog("@ui.trim.title");
+    public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), filterSelectDialog = new BaseDialog("@ui.selectfactory.title"), trimDialog = new BaseDialog("@ui.trim.title");
 
     public Calculator(String s){
         super(s);
         addCloseButton();
         selectDialog.addCloseButton();
+        filterSelectDialog.addCloseButton();
         trimDialog.addCloseButton();
         shown(this::rebuild);
 
@@ -105,7 +106,7 @@ public class Calculator extends BaseDialog{
                             tc.add().growX();
                         });
                         img.setFillParent(true);
-                        var lcc = new Label(() -> "" + Mathf.ceil(e.count));
+                        var lcc = new Label(() -> "" + Mathf.ceil(e.count - Mathf.FLOAT_ROUNDING_ERROR));
                         lcc.setFontScale(1.8f);
                         //lcc.setColor(1f, 1f, 1f, 1f);
                         lcc.setFillParent(true);
@@ -172,14 +173,45 @@ public class Calculator extends BaseDialog{
 
         cont.pane(t -> {
             t.name = "Stat Table";
+            t.defaults().pad(4f).fill();
+
             final int[] co = {0};
+
             usedTypes.each((b, fac) -> {
-                t.defaults().pad(4f);
-                t.table(it -> fac.buildIcon(it, false));
-                t.add("").update(l -> {
-                    float f = getFactor(b);
-                    l.setText((f >= 0f ? "+":"") + Strings.autoFixed(f, 3));
-                    l.setColor(Mathf.zero(f, 0.01f) ? Color.gray : f > 0 ? Color.green : Color.coral);
+                t.button(tt -> {
+                    tt.table(it -> fac.buildIcon(it, false));
+                    tt.add("").update(l -> {
+                        float f = getFactor(b);
+                        l.setText((f >= 0f ? "+":"") + Strings.autoFixed(f, 3));
+                        l.setColor(Mathf.zero(f, 0.01f) ? Color.gray : f > 0 ? Color.green : Color.coral);
+                    });
+                }, () -> {}).get().clicked(() -> {
+                    filterSelectDialog.cont.clear();
+                    filterSelectDialog.cont.table(taaa -> {
+                        fac.buildIcon(taaa, true);
+                        taaa.add(Strings.fixed(getFactor(b), 3));
+                    }).row();
+                    filterSelectDialog.cont.pane(p -> {
+                        p.defaults().uniform().fill();
+                        final int[] co2 = {0};
+                        float total = getFactor(b);
+                        IOEnitiy.defaults.each(def -> {
+                            if(def.factors == null || def.factors.isEmpty()) return;
+                            if(!def.factors.contains(factor -> factor.type.equals(b) && factor.rate * total < 0f)) return;
+                            var targetfac = def.factors.min(fff -> fff.type.equals(b) ? fff.rate * Mathf.sign(total) : 0f);
+                            p.button(ttt -> {
+                                ttt.image(def.content.uiIcon).size(32f);
+                                ttt.add(def.content.localizedName).growX();
+                                ttt.add(Strings.fixed(targetfac.rate, 3));
+                            }, () -> {
+                                bodies.add(def.copy());
+                                rebuild();
+                                filterSelectDialog.hide();
+                            });
+                            if(Mathf.mod(++co2[0], 3) == 0) p.row();
+                        });
+                    }).grow();
+                    filterSelectDialog.show();
                 });
 
                 if(Mathf.mod(++co[0], 6) == 0) t.row();
