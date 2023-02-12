@@ -16,7 +16,7 @@ Copy processor/message in schematic info without placing it. Schematic consumpti
 Github: BlackDeluxeCat/SchematicParse"
 
 #the mod version
-version: 4.1.1
+version: 4.2
 
 #the minimum game build required to run this mod
 minGameVersion: 141.1
