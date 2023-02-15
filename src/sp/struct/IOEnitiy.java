@@ -3,10 +3,10 @@ package sp.struct;
 import arc.*;
 import arc.func.*;
 import arc.math.*;
-import arc.scene.event.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
+import arc.util.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.ctype.*;
@@ -23,7 +23,6 @@ import mindustry.world.blocks.power.*;
 import mindustry.world.blocks.production.*;
 import mindustry.world.blocks.units.*;
 import mindustry.world.consumers.*;
-
 import sp.struct.FactorIO.*;
 
 public class IOEnitiy{
@@ -36,8 +35,12 @@ public class IOEnitiy{
         content = type;
     }
 
+    public float getSingleRate(Object type){
+        return factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate : 0f) + buckets.sumf(bucket -> bucket.enable ? bucket.factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate : 0f) : 0f);
+    }
+
     public float getRate(Object type){
-        return factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate : 0f) + buckets.sumf(bucket -> bucket.getRate(type));
+        return factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate * (t.continuous ? count : Mathf.ceil(count)) : 0f) + buckets.sumf(bucket -> bucket.enable ? bucket.factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate * (t.continuous ? count : Mathf.ceil(count)) : 0f) : 0f);
     }
 
     public <T> void add(FactorIO<T> factor){
@@ -49,7 +52,7 @@ public class IOEnitiy{
     }
 
     public float need(Object type, float need){
-        float rate = getRate(type);
+        float rate = getSingleRate(type);
         if(Mathf.zero(rate, 0.00001f)) return 0f;
         return need / rate;
     }
@@ -97,10 +100,6 @@ public class IOEnitiy{
 
         public void addAll(FactorIO<?>[] factor){
             factors.add(factor);
-        }
-
-        public float getRate(Object type){
-            return enable ? factors.sumf(t -> t.enable && t.type.equals(type) ? t.rate : 0f) : 0f;
         }
 
         public void build(Table table){
@@ -184,13 +183,15 @@ public class IOEnitiy{
 
     /**Default factors for each unit.*/
     public static Seq<IOEnitiy> defaults = new Seq<>();
-    public static Seq<Cons<IOEnitiy>> initruns = new Seq<>();
+    /**Functions generating default IO, with name id. Removable and re-run generation. Execution order configurable with OrderedMap.orderedkeys(). */
+    public static OrderedMap<String, Cons<IOEnitiy>> initruns = new OrderedMap<>();
     /**Contains instances of every factor. Used for SourceIOEntity.*/
     public static OrderedMap<Object, FactorIO<?>> allFactors = new OrderedMap<>();
 
     public static void init(){
         float timemul = 60f;
-        initruns.add(e -> {
+
+        initruns.put("SP-TimedFactory", e -> {
             if(e.content instanceof Block block){
                 float ticks = Float.MAX_VALUE;
                 if(block instanceof GenericCrafter gc) ticks = gc.craftTime;
@@ -245,7 +246,23 @@ public class IOEnitiy{
                         e.add(new ItemIO(stack.item, stack.amount / sum / ticks * timemul, true));
                     }
                 }else if(block instanceof PowerGenerator pg){
-                    e.add(new CustomIO("power", pg.powerProduction * timemul, true));
+                    if(pg instanceof ConsumeGenerator cg && cg.filterItem != null){
+                        for(var item : Vars.content.items()){
+                            if(!cg.filterItem.filter.get(item)) continue;
+                            float power = 1f;
+                            if(cg.filterItem instanceof ConsumeItemFlammable) power = item.flammability;
+                            if(cg.filterItem instanceof ConsumeItemRadioactive) power = item.radioactivity;
+                            if(cg.filterItem instanceof ConsumeItemExplosive) power = item.explosiveness;
+                            if(cg.filterItem instanceof ConsumeItemCharged) power = item.charge;
+                            e.add(new FactorBucket(item.localizedName,
+                                    new CustomIO("power", power * pg.powerProduction * timemul, true),
+                                    new ItemIO(item, -1f / ticks * timemul, true)
+                            ));
+                        }
+
+                    }else{
+                        e.add(new CustomIO("power", pg.powerProduction * timemul, true));
+                    }
                 }else if(block instanceof Reconstructor r){
                     for(UnitType[] uta : r.upgrades){
                         if(uta == null || uta[0] == null || uta[1] == null) continue;
@@ -258,7 +275,7 @@ public class IOEnitiy{
             }
         });
 
-        initruns.add(e -> {
+        initruns.put("SP-UnitFactory", e -> {
             if(e.content instanceof UnitFactory uf){
                 uf.plans.each(plan -> {
                     var bucket = new FactorBucket(plan.unit.localizedName, new UnitIO(plan.unit, 1f / plan.time * timemul, true));
@@ -281,7 +298,7 @@ public class IOEnitiy{
             }
         });
 
-        initruns.add(e -> {
+        initruns.put("SP-Turret", e -> {
             if(e.content instanceof ReloadTurret rt){
                 if(rt.coolant instanceof ConsumeCoolant cc){
                     Vars.content.liquids().each(liquid -> {
@@ -300,6 +317,14 @@ public class IOEnitiy{
             }
         });
 
+        initruns.put("SP-BlockSize", e -> {
+            if(e.content instanceof Block b){
+                var f = new CustomIO("size", b.size * b.size, true);
+                f.continuous = false;
+                e.add(f);
+            }
+        });
+
         reGenerateDefaults();
 
         Events.on(EventType.ContentInitEvent.class, e -> reGenerateDefaults());
@@ -309,7 +334,7 @@ public class IOEnitiy{
         Vars.content.blocks().each(block -> {
             var entity = get(block);
             entity.factors.clear();
-            initruns.each(cons -> cons.get(entity));
+            initruns.orderedKeys().each(name -> initruns.get(name).get(entity));
         });
 
         Vars.content.items().each(type -> allFactors.put(type, new ItemIO(type, 0f, true)));

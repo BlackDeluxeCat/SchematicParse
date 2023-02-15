@@ -1,7 +1,6 @@
 package sp;
 
 import arc.*;
-import arc.func.*;
 import arc.graphics.*;
 import arc.math.*;
 import arc.scene.ui.*;
@@ -43,14 +42,14 @@ public class Calculator extends BaseDialog{
         selectDialog.cont.clear();
 
         selectDialog.cont.pane(p -> {
-            p.defaults().uniform().fill();
+            p.defaults().uniform().fill().pad(2f);
             final int[] co = {0};
             IOEnitiy.defaults.each(def -> {
                 if(def.factors == null || def.factors.isEmpty()) return;
                 p.button(t -> {
                     t.image(def.content.uiIcon).size(32f);
                     t.add(def.content.localizedName).growX();
-                }, () -> {
+                }, Styles.flatBordert, () -> {
                     bodies.add(def.copy());
                     rebuild();
                     selectDialog.hide();
@@ -114,7 +113,7 @@ public class Calculator extends BaseDialog{
                         var lc = new Label(() -> Strings.fixed(e.count, 3));
                         lc.setFillParent(true);
                         lcc.setStyle(Styles.outlineLabel);
-                        lc.setAlignment(Align.bottomLeft);
+                        lc.setAlignment(Align.topLeft);
                         lc.setColor(0.9f, 0.8f, 1f, 0.6f);
                         var buttons = new Table(tc -> {
                             tc.defaults().right();
@@ -185,14 +184,14 @@ public class Calculator extends BaseDialog{
                         l.setText((f >= 0f ? "+":"") + Strings.autoFixed(f, 3));
                         l.setColor(Mathf.zero(f, 0.01f) ? Color.gray : f > 0 ? Color.green : Color.coral);
                     });
-                }, () -> {}).get().clicked(() -> {
+                }, Styles.flatBordert, () -> {}).get().clicked(() -> {
                     filterSelectDialog.cont.clear();
                     filterSelectDialog.cont.table(taaa -> {
                         fac.buildIcon(taaa, true);
                         taaa.add(Strings.fixed(getFactor(b), 3));
                     }).row();
                     filterSelectDialog.cont.pane(p -> {
-                        p.defaults().uniform().fill();
+                        p.defaults().uniform().fill().pad(2f);
                         final int[] co2 = {0};
                         float total = getFactor(b);
                         IOEnitiy.defaults.each(def -> {
@@ -203,7 +202,7 @@ public class Calculator extends BaseDialog{
                                 ttt.image(def.content.uiIcon).size(32f);
                                 ttt.add(def.content.localizedName).growX();
                                 ttt.add(Strings.fixed(targetfac.rate, 3));
-                            }, () -> {
+                            }, Styles.flatBordert, () -> {
                                 bodies.add(def.copy());
                                 rebuild();
                                 filterSelectDialog.hide();
@@ -220,6 +219,6 @@ public class Calculator extends BaseDialog{
     }
 
     public float getFactor(Object type){
-        return bodies.sumf(enitiy -> enitiy.count * enitiy.getRate(type));
+        return bodies.sumf(enitiy -> enitiy.getRate(type));
     }
 }

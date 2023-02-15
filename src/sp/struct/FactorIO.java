@@ -17,6 +17,8 @@ public class FactorIO<T>{
     /** amount per sec*/
     public float rate;
     public boolean enable = true;
+    /**If false, eneity count will be rounded up.*/
+    public boolean continuous = true;
 
     public FactorIO(T t, float a, boolean en){
         set(t, a, en);
@@ -30,7 +32,9 @@ public class FactorIO<T>{
 
     /** Must be overwritten. */
     public FactorIO<T> copy(){
-        return new FactorIO<>(type, rate, enable);
+        var n = new FactorIO<>(type, rate, enable);
+        n.continuous = continuous;
+        return n;
     }
 
     /** The copy of each factor can only be configured with table ui. */
@@ -61,7 +65,9 @@ public class FactorIO<T>{
 
         @Override
         public UnlockableContentIO<T> copy(){
-            return new UnlockableContentIO<>(type, rate, enable);
+            var n = new UnlockableContentIO<>(type, rate, enable);
+            n.continuous = continuous;
+            return n;
         }
     }
 
@@ -72,7 +78,9 @@ public class FactorIO<T>{
 
         @Override
         public ItemIO copy(){
-            return new ItemIO(type, rate, enable);
+            var n = new ItemIO(type, rate, enable);
+            n.continuous = continuous;
+            return n;
         }
     }
 
@@ -83,7 +91,9 @@ public class FactorIO<T>{
 
         @Override
         public LiquidIO copy(){
-            return new LiquidIO(type, rate, enable);
+            var n = new LiquidIO(type, rate, enable);
+            n.continuous = continuous;
+            return n;
         }
     }
 
@@ -94,7 +104,9 @@ public class FactorIO<T>{
 
         @Override
         public UnitIO copy(){
-            return new UnitIO(type, rate, enable);
+            var n = new UnitIO(type, rate, enable);
+            n.continuous = continuous;
+            return n;
         }
     }
 
@@ -105,7 +117,9 @@ public class FactorIO<T>{
 
         @Override
         public BlockIO copy(){
-            return new BlockIO(type, rate, enable);
+            var n = new BlockIO(type, rate, enable);
+            n.continuous = continuous;
+            return n;
         }
     }
 
@@ -142,7 +156,9 @@ public class FactorIO<T>{
 
         @Override
         public CustomIO copy(){
-            return new CustomIO(type, rate, enable);
+            var n = new CustomIO(type, rate, enable);
+            n.continuous = continuous;
+            return n;
         }
     }
 }
