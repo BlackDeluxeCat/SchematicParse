@@ -7,6 +7,7 @@ import arc.util.*;
 import mindustry.ctype.*;
 import mindustry.type.*;
 import mindustry.world.*;
+import sp.ui.*;
 
 import static sp.SchematicParse.floatf;
 
@@ -39,7 +40,7 @@ public class FactorIO<T>{
 
     /** The copy of each factor can only be configured with table ui. */
     public void build(Table table){
-        table.field(Strings.autoFixed(rate, 3), floatf, s -> rate = Strings.parseFloat(s, 1f)).width(90f);
+        table.field(Strings.fixed(rate, 3), floatf, s -> rate = Strings.parseFloat(s, 1f)).width(90f).height(smallSize);
     }
 
     public void buildIcon(Table table, boolean name){}
@@ -144,14 +145,7 @@ public class FactorIO<T>{
 
         @Override
         public void buildIcon(Table table, boolean name){
-            table.add(type).size(smallSize).update(i -> {
-                i.setColor(enable ? Color.white : Color.gray);
-                i.setFontScale(1f);
-                i.setWrap(false);
-                i.layout();
-                i.setFontScale(Mathf.clamp(Mathf.sqrt(smallSize / i.getGlyphLayout().width), 0.1f, 1f));
-                i.setWrap(true);
-            });
+            table.add(new SPLabel(type, true, true)).size(smallSize).update(i -> i.setColor(enable ? Color.white : Color.gray));
         }
 
         @Override

@@ -6,7 +6,6 @@ import arc.math.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
-import arc.util.*;
 import mindustry.*;
 import mindustry.content.*;
 import mindustry.ctype.*;
@@ -59,6 +58,7 @@ public class IOEnitiy{
 
     public IOEnitiy copy(){
         var copy = new IOEnitiy(this.content);
+        copy.count = this.count;
         this.factors.each(c -> copy.add(c.copy()));
         this.buckets.each(bucket -> {
             var copyb = new FactorBucket(bucket.name);
@@ -123,32 +123,65 @@ public class IOEnitiy{
 
     public static class SourceIOEntity extends IOEnitiy{
         public final static SourceIOEntity source = new SourceIOEntity(Blocks.itemSource);
-        public BaseDialog select = new BaseDialog("@ui.selectfactor.title"){{addCloseButton();}};
+        public static BaseDialog select = new BaseDialog("@ui.selectfactor.title"){{addCloseButton();}};
+        public static BaseDialog iconSelect = new BaseDialog("@ui.selectfactor.title"){{addCloseButton();}};
         public boolean needRebuild = false;
+        protected static SourceIOEntity target;
 
-        public SourceIOEntity(UnlockableContent type){
-            super(type);
+        public static void init(){
             select.cont.clear();
             select.cont.pane(p -> {
                 final int[] i = {0};
                 allFactors.each((obj, factor) -> {
-                    p.button(b -> factor.buildIcon(b, true), () -> {
-                        add(factor.copy());
+                    p.button(b -> factor.buildIcon(b, true), Styles.flatt, () -> {
+                        if(target != null){
+                            target.add(factor.copy());
+                            target.needRebuild = true;
+                        }
                         select.hide();
-                        needRebuild = true;
                     }).pad(6f).size(196f, 32f);
                     if(Mathf.mod(++i[0], 6) == 0) p.row();
                 });
             }).grow().with(p -> {
                 p.setForceScroll(true, true);
             });
+
+            iconSelect.cont.clear();
+            iconSelect.cont.pane(p -> {
+                final int[] i = {0};
+                Vars.content.each(c -> {
+                    if(c instanceof UnlockableContent uc){
+                        p.button(b -> b.image(uc.uiIcon), Styles.flatt, () -> {
+                            if(target != null){
+                                target.content = uc;
+                                target.needRebuild = true;
+                            }
+                            iconSelect.hide();
+                        }).pad(6f).size(32f, 32f);
+                        if(Mathf.mod(++i[0], 16) == 0) p.row();
+                    }
+                });
+            }).grow().with(p -> {
+                p.setForceScroll(true, true);
+            });
+        }
+
+        public SourceIOEntity(UnlockableContent type){
+            super(type);
         }
 
         @Override
         public void buildFactors(Table table){
             table.clear();
             table.table(t -> {
-                t.button("" + Iconc.add, Styles.cleart, () -> select.show()).minSize(32f).grow();
+                t.button("" + Iconc.image, Styles.cleart, () -> {
+                    target = this;
+                    iconSelect.show();
+                }).minSize(32f).grow();
+                t.button("" + Iconc.add, Styles.cleart, () -> {
+                    target = this;
+                    select.show();
+                }).minSize(32f).grow();
 
                 t.button("" + Iconc.cancel, Styles.cleart, () -> {
                     factors.clear();
@@ -326,8 +359,12 @@ public class IOEnitiy{
         });
 
         reGenerateDefaults();
+        SourceIOEntity.init();
 
-        Events.on(EventType.ContentInitEvent.class, e -> reGenerateDefaults());
+        Events.on(EventType.ContentInitEvent.class, e -> {
+            reGenerateDefaults();
+            SourceIOEntity.init();
+        });
     }
 
     public static void reGenerateDefaults(){
