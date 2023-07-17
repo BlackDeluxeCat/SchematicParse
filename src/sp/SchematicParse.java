@@ -50,9 +50,9 @@ public class SchematicParse extends Mod{
         Log.info("Loading some example content.");
     }
 
-    public static TextureRegionDrawable uiTrim;
+    public static TextureRegionDrawable uiBalancing;
     public static void initStyles(){
-        uiTrim = new TextureRegionDrawable(Core.atlas.find("schematicparse-ui-balance"));
+        uiBalancing = new TextureRegionDrawable(Core.atlas.find("schematicparse-ui-balance"));
     }
 
     public static void schelogic(){

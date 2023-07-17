@@ -3,6 +3,7 @@ package sp.struct;
 import arc.graphics.*;
 import arc.math.*;
 import arc.scene.ui.layout.*;
+import arc.struct.*;
 import arc.util.*;
 import mindustry.ctype.*;
 import mindustry.type.*;
@@ -13,6 +14,7 @@ import static sp.SchematicParse.floatf;
 
 /** Production factor type.*/
 public class FactorIO<T>{
+    public static ObjectMap<Object, FactorIO<?>> factors = new ObjectMap<>();
     public static float smallSize = 24f;
     public T type;
     /** amount per sec*/
@@ -23,6 +25,7 @@ public class FactorIO<T>{
 
     public FactorIO(T t, float a, boolean en){
         set(t, a, en);
+        factors.put(t, this);
     }
 
     public void set(T t, float a, boolean en){

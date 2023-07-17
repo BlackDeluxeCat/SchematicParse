@@ -2,9 +2,7 @@ package sp;
 
 import arc.*;
 import arc.graphics.*;
-import arc.graphics.g2d.*;
 import arc.math.*;
-import arc.scene.*;
 import arc.scene.actions.*;
 import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
@@ -25,8 +23,8 @@ public class Calculator extends BaseDialog{
 
     public Seq<Seq<IOEnitiy>> bodiesTab = new Seq<>();
     public Seq<IOEnitiy> bodies = new Seq<>();
-    public ObjectMap<Object, FactorIO<?>> usedTypes = new ObjectMap<>();
-    public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), filterSelectDialog = new BaseDialog("@ui.selectfactory.title"), trimDialog = new BaseDialog("@ui.trim.title");
+    public ObjectSet<Object> usedTypes = new ObjectSet<>();
+    public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), filterSelectDialog = new BaseDialog("@ui.selectfactory.title"), balancingDialog = new BaseDialog("@ui.balancing.title");
     protected Table entitiesPane;
     protected boolean needRebuildStats = true;
 
@@ -35,7 +33,7 @@ public class Calculator extends BaseDialog{
         addCloseButton();
         selectDialog.addCloseButton();
         filterSelectDialog.addCloseButton();
-        trimDialog.addCloseButton();
+        balancingDialog.addCloseButton();
 
         shown(() -> {
             if(bodiesTab.size == 0){
@@ -159,11 +157,12 @@ public class Calculator extends BaseDialog{
                 t.clear();
                 final int[] co = {0};
 
-                usedTypes.each((b, fac) -> {
+                usedTypes.each(type -> {
+                    var fac = FactorIO.factors.get(type);
                     t.button(tt -> {
                         tt.table(it -> fac.buildIcon(it, false));
                         tt.add("").update(l -> {
-                            float f = getFactor(b);
+                            float f = getFactor(type);
                             l.setText((f >= 0f ? "+":"") + Strings.autoFixed(f, 3));
                             l.setColor(Mathf.zero(f, 0.01f) ? Color.gray : f > 0 ? Color.green : Color.coral);
                         });
@@ -171,16 +170,16 @@ public class Calculator extends BaseDialog{
                         filterSelectDialog.cont.clear();
                         filterSelectDialog.cont.table(taaa -> {
                             fac.buildIcon(taaa, true);
-                            taaa.add(Strings.fixed(getFactor(b), 3));
+                            taaa.add(Strings.fixed(getFactor(type), 3));
                         }).row();
                         filterSelectDialog.cont.pane(p -> {
                             p.defaults().uniform().fill().pad(2f);
                             final int[] co2 = {0};
-                            float total = getFactor(b);
+                            float total = getFactor(type);
                             IOEnitiy.defaults.each(def -> {
                                 if(def.factors == null || def.factors.isEmpty()) return;
-                                if(!def.factors.contains(factor -> factor.type.equals(b) && factor.rate * total < 0f)) return;
-                                var targetfac = def.factors.min(fff -> fff.type.equals(b) ? fff.rate * Mathf.sign(total) : 0f);
+                                if(!def.factors.contains(factor -> factor.type.equals(type) && factor.rate * total < 0f)) return;
+                                var targetfac = def.factors.min(fff -> fff.type.equals(type) ? fff.rate * Mathf.sign(total) : 0f);
                                 p.button(ttt -> {
                                     ttt.image(def.content.uiIcon).size(32f);
                                     ttt.add(def.content.localizedName).growX();
@@ -268,6 +267,7 @@ public class Calculator extends BaseDialog{
         t.clear();
         t.name = "Cfg Table";
         final int[] co = {0};
+        //逐IO建筑构造UI界面
         bodies.each(e -> {
             t.pane(tb -> {
                 tb.image().growX().height(4f).color(Color.gold);
@@ -300,24 +300,25 @@ public class Calculator extends BaseDialog{
                         tc.row();
 
                         tc.add().growX();
-                        tc.button(uiTrim, Styles.cleari, 24f, () -> {
-                            trimDialog.cont.clear();
-                            trimDialog.cont.pane(p -> {
+                        //配平按钮和配平对话框
+                        tc.button(uiBalancing, Styles.cleari, 24f, () -> {
+                            balancingDialog.cont.clear();
+                            balancingDialog.cont.pane(p -> {
                                 final int[] co2 = {0};
-                                usedTypes.each((type, fac) -> {
+                                usedTypes.each(type -> {
                                     float count = e.count;
                                     e.count = 0f;
                                     float need = e.need(type, -getFactor(type));
                                     e.count = count;
                                     if(need <= 0f) return;
-                                    p.button(trimt -> fac.buildIcon(trimt, true), () -> {
+                                    p.button(balt -> FactorIO.factors.get(type).buildIcon(balt, true), () -> {
                                         e.count = need;
-                                        trimDialog.hide();
+                                        balancingDialog.hide();
                                     }).minSize(48f).pad(4f);
                                     if(Mathf.mod(++co2[0], 6) == 0) p.row();
                                 });
                             });
-                            trimDialog.show();
+                            balancingDialog.show();
                         }).size(32f);
                         tc.row();
 
@@ -338,8 +339,8 @@ public class Calculator extends BaseDialog{
 
                 tb.table(e::buildFactors);
 
-                e.factors.each(fac -> usedTypes.put(fac.type, fac));
-                e.buckets.each(bucket -> bucket.factors.each(fac -> usedTypes.put(fac.type, fac)));
+                e.factors.each(fac -> usedTypes.add(fac.type));
+                e.buckets.each(bucket -> bucket.factors.each(fac -> usedTypes.add(fac.type)));
 
             }).top().maxHeight(300f).pad(4f);
 
