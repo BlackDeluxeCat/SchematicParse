@@ -14,6 +14,7 @@ import static sp.SchematicParse.floatf;
 
 /** Production factor type.*/
 public class FactorIO<T>{
+    /**Contains instances of every factor. Used for SourceIOEntity.*/
     public static ObjectMap<Object, FactorIO<?>> factors = new ObjectMap<>();
     public static float smallSize = 24f;
     public T type;

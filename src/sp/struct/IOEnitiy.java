@@ -111,6 +111,7 @@ public class IOEnitiy{
             enb.setChecked(enable);
             table.add(enb).grow();
             var expand = table.button("" + Iconc.downOpen, Styles.flatTogglet, () -> {}).size(32f).get();
+            expand.setChecked(enable);
             table.row();
             table.collapser(t -> {
                 factors.each(fac -> {
@@ -132,7 +133,7 @@ public class IOEnitiy{
             select.cont.clear();
             select.cont.pane(p -> {
                 final int[] i = {0};
-                allFactors.each((obj, factor) -> {
+                FactorIO.factors.each((obj, factor) -> {
                     p.button(b -> factor.buildIcon(b, true), Styles.flatt, () -> {
                         if(target != null){
                             target.add(factor.copy());
@@ -218,8 +219,6 @@ public class IOEnitiy{
     public static Seq<IOEnitiy> defaults = new Seq<>();
     /**Functions generating default IO, with name id. Removable and re-run generation. Execution order configurable with OrderedMap.orderedkeys(). */
     public static OrderedMap<String, Cons<IOEnitiy>> initruns = new OrderedMap<>();
-    /**Contains instances of every factor. Used for SourceIOEntity.*/
-    public static OrderedMap<Object, FactorIO<?>> allFactors = new OrderedMap<>();
 
     public static void init(){
         float timemul = 60f;
@@ -246,6 +245,14 @@ public class IOEnitiy{
                         for(var i : ci.items) e.add(new ItemIO(i.item, -i.amount / ticks * timemul, !cons.booster));
                     }
                     if(cons instanceof ConsumeLiquid cl) e.add(new LiquidIO(cl.liquid, -cl.amount * timemul, !cons.booster));
+                    if(cons instanceof ConsumeLiquids cl){
+                        var bucket = new FactorBucket(Iconc.liquid + "");
+                        for(var stack : cl.liquids){
+                            bucket.add(new LiquidIO(stack.liquid, -stack.amount * timemul, !cl.booster));
+                        }
+                        bucket.enable = !cl.booster;
+                        e.add(bucket);
+                    }
                 }
 
                 if(block instanceof GenericCrafter gb){
@@ -279,20 +286,32 @@ public class IOEnitiy{
                         e.add(new ItemIO(stack.item, stack.amount / sum / ticks * timemul, true));
                     }
                 }else if(block instanceof PowerGenerator pg){
-                    if(pg instanceof ConsumeGenerator cg && cg.filterItem != null){
-                        for(var item : Vars.content.items()){
-                            if(!cg.filterItem.filter.get(item)) continue;
-                            float power = 1f;
-                            if(cg.filterItem instanceof ConsumeItemFlammable) power = item.flammability;
-                            if(cg.filterItem instanceof ConsumeItemRadioactive) power = item.radioactivity;
-                            if(cg.filterItem instanceof ConsumeItemExplosive) power = item.explosiveness;
-                            if(cg.filterItem instanceof ConsumeItemCharged) power = item.charge;
-                            e.add(new FactorBucket(item.localizedName,
-                                    new CustomIO("power", power * pg.powerProduction * timemul, true),
-                                    new ItemIO(item, -1f / ticks * timemul, true)
-                            ));
+                    if(pg instanceof ConsumeGenerator cg){
+                        if(cg.filterItem != null){
+                            for(var item : Vars.content.items()){
+                                if(!cg.filterItem.filter.get(item)) continue;
+                                float power = 1f;
+                                if(cg.filterItem instanceof ConsumeItemFlammable) power = item.flammability;
+                                if(cg.filterItem instanceof ConsumeItemRadioactive) power = item.radioactivity;
+                                if(cg.filterItem instanceof ConsumeItemExplosive) power = item.explosiveness;
+                                if(cg.filterItem instanceof ConsumeItemCharged) power = item.charge;
+                                e.add(new FactorBucket(item.localizedName,
+                                        new CustomIO("power", power * cg.powerProduction * timemul, true),
+                                        new ItemIO(item, -1f / ticks * timemul, true)
+                                ));
+                            }
+                        }else{
+                            e.add(new CustomIO("power", cg.powerProduction * timemul, true));
                         }
 
+                        if(cg.outputsLiquid && cg.outputLiquid != null){
+                            e.add(new LiquidIO(cg.outputLiquid.liquid, cg.outputLiquid.amount * timemul * cg.size * cg.size, true));
+                        }
+                    }else if(block instanceof ThermalGenerator tg){
+                        if(tg.outputsLiquid && tg.outputLiquid != null){
+                            e.add(new LiquidIO(tg.outputLiquid.liquid, tg.outputLiquid.amount * timemul * tg.size * tg.size, true));
+                        }
+                        e.add(new CustomIO("power", pg.powerProduction * timemul * tg.size * tg.size, true));
                     }else{
                         e.add(new CustomIO("power", pg.powerProduction * timemul, true));
                     }
@@ -374,15 +393,15 @@ public class IOEnitiy{
             initruns.orderedKeys().each(name -> initruns.get(name).get(entity));
         });
 
-        Vars.content.items().each(type -> allFactors.put(type, new ItemIO(type, 0f, true)));
-        Vars.content.liquids().each(type -> allFactors.put(type, new LiquidIO(type, 0f, true)));
-        Vars.content.units().each(type -> allFactors.put(type, new UnitIO(type, 0f, true)));
+        Vars.content.items().each(type -> FactorIO.factors.put(type, new ItemIO(type, 0f, true)));
+        Vars.content.liquids().each(type -> FactorIO.factors.put(type, new LiquidIO(type, 0f, true)));
+        Vars.content.units().each(type -> FactorIO.factors.put(type, new UnitIO(type, 0f, true)));
         Vars.content.blocks().each(type -> {
             if(!type.hasBuilding()) return;
-            allFactors.put(type, new BlockIO(type, 0f, true));
+            FactorIO.factors.put(type, new BlockIO(type, 0f, true));
         });
-        allFactors.put("power", new CustomIO("power", 0f, true));
-        allFactors.put("damage", new CustomIO("damage", 0f, true));
+        FactorIO.factors.put("power", new CustomIO("power", 0f, true));
+        FactorIO.factors.put("damage", new CustomIO("damage", 0f, true));
     }
 
     //TODO generate customized IOEntity class.
