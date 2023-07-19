@@ -305,7 +305,7 @@ public class IOEnitiy{
                         }
 
                         if(cg.outputsLiquid && cg.outputLiquid != null){
-                            e.add(new LiquidIO(cg.outputLiquid.liquid, cg.outputLiquid.amount * timemul * cg.size * cg.size, true));
+                            e.add(new LiquidIO(cg.outputLiquid.liquid, cg.outputLiquid.amount * timemul, true));
                         }
                     }else if(block instanceof ThermalGenerator tg){
                         if(tg.outputsLiquid && tg.outputLiquid != null){
