@@ -21,8 +21,8 @@ import static sp.SchematicParse.*;
 public class Calculator extends BaseDialog{
     public static Calculator ui = new Calculator("@ui.calculator.title");
 
-    public Seq<Seq<Entity>> bodiesTab = new Seq<>();
-    public Seq<Entity> bodies = new Seq<>();
+    public Seq<Seq<Entity>> entitiesTab = new Seq<>();
+    public Seq<Entity> entities = new Seq<>();
     public ObjectSet<Object> usedTypes = new ObjectSet<>();
     public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), filterSelectDialog = new BaseDialog("@ui.selectfactory.title"), balancingDialog = new BaseDialog("@ui.balancing.title");
     protected Table entitiesPane;
@@ -36,10 +36,10 @@ public class Calculator extends BaseDialog{
         balancingDialog.addCloseButton();
 
         shown(() -> {
-            if(bodiesTab.size == 0){
+            if(entitiesTab.size == 0){
                 var seq = new Seq<Entity>();
-                bodiesTab.add(seq);
-                bodies = seq;
+                entitiesTab.add(seq);
+                entities = seq;
             }
             this.build();
         });
@@ -63,7 +63,7 @@ public class Calculator extends BaseDialog{
                     t.image(def.type.uiIcon).size(32f);
                     t.add(new SPLabel(def.type.localizedName, true, true)).size(128f, 24f);
                 }, Styles.flatBordert, () -> {
-                    bodies.add(def.copy());
+                    entities.add(def.copy());
                     rebuildEntities(entitiesPane);
                     selectDialog.hide();
                 });
@@ -73,15 +73,15 @@ public class Calculator extends BaseDialog{
     }
 
     public void importShow(ObjectIntMap<UnlockableContent> list){
-        bodies = new Seq<>();
-        bodiesTab.add(bodies);
+        entities = new Seq<>();
+        entitiesTab.add(entities);
         BlockEnitiy.defaults.each(def -> {
             if(def.factors == null || def.factors.isEmpty()) return;
             int count = list.get(def.type, 0);
             if(count <= 0) return;
             var copy = def.copy();
             copy.count = count;
-            bodies.add(copy);
+            entities.add(copy);
         });
         show();
     }
@@ -109,17 +109,17 @@ public class Calculator extends BaseDialog{
                 toolt.defaults().size(50f);
                 toolt.button(Iconc.copy + "", Styles.flatt, () -> {
                     var seq = new Seq<Entity>();
-                    bodies.each(e -> seq.add(e.copy()));
-                    bodies = seq;
-                    bodiesTab.add(seq);
+                    entities.each(e -> seq.add(e.copy()));
+                    entities = seq;
+                    entitiesTab.add(seq);
 
                     build();
                 });
 
                 toolt.button(Iconc.add + "", Styles.flatt, () -> {
                     var seq = new Seq<Entity>();
-                    bodiesTab.add(seq);
-                    bodies = seq;
+                    entitiesTab.add(seq);
+                    entities = seq;
 
                     build();
                 });
@@ -133,7 +133,7 @@ public class Calculator extends BaseDialog{
             t.defaults().height(100f);
             t.button("@ui.addfactory", () -> selectDialog.show()).growX();
             t.button(Iconc.blockItemSource + "\n" + Core.bundle.get("ui.addsource") , () -> {
-                bodies.add(SourceEntity.source.copy());
+                entities.add(SourceEntity.source.copy());
                 rebuildEntities(entitiesPane);
             }).size(100f);
         }).growX();
@@ -185,7 +185,7 @@ public class Calculator extends BaseDialog{
                                     ttt.add(def.type.localizedName).growX();
                                     ttt.add(Strings.fixed(targetfac.rate, 3));
                                 }, Styles.flatBordert, () -> {
-                                    bodies.add(def.copy());
+                                    entities.add(def.copy());
                                     rebuildEntities(entitiesPane);
                                     filterSelectDialog.hide();
                                 });
@@ -204,7 +204,7 @@ public class Calculator extends BaseDialog{
     public void rebuildTabs(Table p){
         p.clear();
         p.left();
-        bodiesTab.each(bo -> {
+        entitiesTab.each(bo -> {
             p.table(tt -> {
                 tt.left();
                 //Title
@@ -234,16 +234,16 @@ public class Calculator extends BaseDialog{
                     l.setAlignment(Align.center);
                     bb.add(l).size(40f, 32f);
                 }, Styles.clearTogglei, () -> {
-                    bodies = bo;
+                    entities = bo;
                     rebuildEntities(entitiesPane);
-                }).grow().checked(bm -> bodies == bo);
+                }).grow().checked(bm -> entities == bo);
 
                 //Close button
                 tt.button("" + Iconc.cancel, Styles.nonet, () -> {
-                    int index = bodiesTab.indexOf(bo) - 1;
-                    bodiesTab.remove(bo);
-                    if(bodies == bo){
-                        bodies = bodiesTab.get(Math.max(0, index));
+                    int index = entitiesTab.indexOf(bo) - 1;
+                    entitiesTab.remove(bo);
+                    if(entities == bo){
+                        entities = entitiesTab.get(Math.max(0, index));
                     }
                     rebuildEntities(entitiesPane);
                     float w = tt.getWidth();
@@ -256,9 +256,9 @@ public class Calculator extends BaseDialog{
                         p.getCells().remove(p.getCell(tt));
                         tt.remove();
                     }));
-                }).size(32f).visible(() -> bodiesTab.size > 1);
+                }).size(32f).visible(() -> entitiesTab.size > 1);
 
-            }).checked(bm -> bodies == bo);
+            }).checked(bm -> entities == bo);
         });
     }
 
@@ -268,7 +268,7 @@ public class Calculator extends BaseDialog{
         t.name = "Cfg Table";
         final int[] co = {0};
         //逐IO建筑构造UI界面
-        bodies.each(e -> {
+        entities.each(e -> {
             t.pane(tb -> {
                 tb.image().growX().height(4f).color(Color.gold);
                 tb.row();
@@ -294,7 +294,7 @@ public class Calculator extends BaseDialog{
 
                         tc.add().growX();
                         tc.button("" + Iconc.cancel, Styles.cleart, () -> {
-                            bodies.remove(e);
+                            entities.remove(e);
                             rebuildEntities(t);
                         }).size(32f);
                         tc.row();
@@ -349,7 +349,7 @@ public class Calculator extends BaseDialog{
     }
 
     public float getFactor(Object type){
-        return getFactor(bodies, type);
+        return getFactor(entities, type);
     }
 
     public float getFactor(Seq<Entity> entites, Object type){

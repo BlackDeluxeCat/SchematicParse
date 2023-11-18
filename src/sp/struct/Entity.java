@@ -7,14 +7,14 @@ import arc.struct.*;
 import arc.util.*;
 import mindustry.ctype.*;
 
+/** 实体工厂包装类 */
 public class Entity{
     public float count = 1f;
     public UnlockableContent type;
-    public Seq<Factor<?>> factors = new Seq<>();
-
-    public Seq<Factor<?>> inputs = new Seq<>();
     public EntityHandler handler;
 
+    /** 从handler中提取的factor引用 */
+    public Seq<Factor<?>> factors = new Seq<>();
 
     public Entity(UnlockableContent type){
         this.type = type;
@@ -40,11 +40,12 @@ public class Entity{
 
     public void buildBody(Table t){
         t.defaults().minHeight(24f);
-        factors.each(f -> f.enable, f -> t.label(() -> f.formatter.get(f.amount)));
+        handler.buildConfig(this, t);
+        //factors.each(f -> f.enable, f -> t.label(() -> f.formatter.get(f.amount)));
     }
 
     public void buildConfig(Table table){
-        handler.parsers.each(p -> p.buildConfig(this, table));
+        handler.ioHandlers.each(p -> p.buildConfig(this, table));
     }
 
 
@@ -61,7 +62,8 @@ public class Entity{
 
     public void parse(){
         factors.clear();
-        handler.parse(this);
+        handler.parse();
+        handler.getFactors(factors);
     }
 
     public Entity copy(){

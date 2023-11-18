@@ -24,7 +24,6 @@ public class Factor<T>{
     /** amount per produce*/
     public float amount;
     public float time = 1f;//sec
-    public FloatStrf formatter = FloatStrf.f4f;
     /**If false, factor count will be rounded up.*/
     public boolean continuous = true;
 
@@ -43,11 +42,10 @@ public class Factor<T>{
         return this;
     }
 
-    public Factor<T> set(String tag, Object group, boolean continuous, FloatStrf form){
+    public Factor<T> set(String tag, Object group, boolean continuous){
         this.tag = tag;
         this.group = group;
         this.continuous = continuous;
-        formatter = form;
         return this;
     }
 
@@ -66,7 +64,6 @@ public class Factor<T>{
         n.group = group;
         n.continuous = continuous;
         n.efficiency = efficiency;
-        n.formatter = formatter;
         return n;
     }
 
@@ -112,21 +109,16 @@ public class Factor<T>{
 
         @Override
         public void build(Table table){
-            table.labelWrap(type).size(smallSize).with(i -> {
-                i.setFontScale(1f);
-                i.setWrap(false);
-                i.layout();
-                i.setFontScale(Mathf.clamp(Mathf.sqrt(smallSize / i.getGlyphLayout().width), 0.1f, 1f));
-                i.setWrap(true);
-            }).update(i -> {
-                i.setColor(enable ? Color.white : Color.gray);
-            }).with(c -> c.clicked(() -> enable = !enable));
+            table.add(new SPLabel(type, true, true)).size(smallSize).update(i -> i.setColor(enable ? Color.white : Color.gray)).with(c -> {
+                c.clicked(() -> enable = !enable);
+            });
             super.build(table);
         }
 
         @Override
         public void buildIcon(Table table, boolean name){
             table.add(new SPLabel(type, true, true)).size(smallSize).update(i -> i.setColor(enable ? Color.white : Color.gray));
+            if(name) table.add(type);
         }
 
         @Override

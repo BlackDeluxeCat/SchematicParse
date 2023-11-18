@@ -18,5 +18,4 @@ public class Entities{
     public static void generate(){
 
     }
-
 }
