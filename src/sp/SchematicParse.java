@@ -39,7 +39,6 @@ public class SchematicParse extends Mod{
             initStyles();
             schelogic();
             Time.run(60f, () -> {
-                IOEnitiy.init();
                 Calculator.ui.buildSelect();
             });
         });

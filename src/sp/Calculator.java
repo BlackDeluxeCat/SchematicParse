@@ -21,8 +21,8 @@ import static sp.SchematicParse.*;
 public class Calculator extends BaseDialog{
     public static Calculator ui = new Calculator("@ui.calculator.title");
 
-    public Seq<Seq<IOEnitiy>> bodiesTab = new Seq<>();
-    public Seq<IOEnitiy> bodies = new Seq<>();
+    public Seq<Seq<Entity>> bodiesTab = new Seq<>();
+    public Seq<Entity> bodies = new Seq<>();
     public ObjectSet<Object> usedTypes = new ObjectSet<>();
     public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), filterSelectDialog = new BaseDialog("@ui.selectfactory.title"), balancingDialog = new BaseDialog("@ui.balancing.title");
     protected Table entitiesPane;
@@ -37,7 +37,7 @@ public class Calculator extends BaseDialog{
 
         shown(() -> {
             if(bodiesTab.size == 0){
-                var seq = new Seq<IOEnitiy>();
+                var seq = new Seq<Entity>();
                 bodiesTab.add(seq);
                 bodies = seq;
             }
@@ -57,11 +57,11 @@ public class Calculator extends BaseDialog{
         selectDialog.cont.pane(p -> {
             p.defaults().fill().pad(2f);
             final int[] co = {0};
-            IOEnitiy.defaults.each(def -> {
+            BlockEnitiy.defaults.each(def -> {
                 if(def.factors == null || def.factors.isEmpty()) return;
                 p.button(t -> {
-                    t.image(def.content.uiIcon).size(32f);
-                    t.add(new SPLabel(def.content.localizedName, true, true)).size(128f, 24f);
+                    t.image(def.type.uiIcon).size(32f);
+                    t.add(new SPLabel(def.type.localizedName, true, true)).size(128f, 24f);
                 }, Styles.flatBordert, () -> {
                     bodies.add(def.copy());
                     rebuildEntities(entitiesPane);
@@ -75,9 +75,9 @@ public class Calculator extends BaseDialog{
     public void importShow(ObjectIntMap<UnlockableContent> list){
         bodies = new Seq<>();
         bodiesTab.add(bodies);
-        IOEnitiy.defaults.each(def -> {
+        BlockEnitiy.defaults.each(def -> {
             if(def.factors == null || def.factors.isEmpty()) return;
-            int count = list.get(def.content, 0);
+            int count = list.get(def.type, 0);
             if(count <= 0) return;
             var copy = def.copy();
             copy.count = count;
@@ -108,7 +108,7 @@ public class Calculator extends BaseDialog{
             t.table(toolt -> {
                 toolt.defaults().size(50f);
                 toolt.button(Iconc.copy + "", Styles.flatt, () -> {
-                    var seq = new Seq<IOEnitiy>();
+                    var seq = new Seq<Entity>();
                     bodies.each(e -> seq.add(e.copy()));
                     bodies = seq;
                     bodiesTab.add(seq);
@@ -117,7 +117,7 @@ public class Calculator extends BaseDialog{
                 });
 
                 toolt.button(Iconc.add + "", Styles.flatt, () -> {
-                    var seq = new Seq<IOEnitiy>();
+                    var seq = new Seq<Entity>();
                     bodiesTab.add(seq);
                     bodies = seq;
 
@@ -133,7 +133,7 @@ public class Calculator extends BaseDialog{
             t.defaults().height(100f);
             t.button("@ui.addfactory", () -> selectDialog.show()).growX();
             t.button(Iconc.blockItemSource + "\n" + Core.bundle.get("ui.addsource") , () -> {
-                bodies.add(IOEnitiy.SourceIOEntity.source.copy());
+                bodies.add(SourceEntity.source.copy());
                 rebuildEntities(entitiesPane);
             }).size(100f);
         }).growX();
@@ -158,7 +158,7 @@ public class Calculator extends BaseDialog{
                 final int[] co = {0};
 
                 usedTypes.each(type -> {
-                    var fac = FactorIO.factors.get(type);
+                    var fac = Factor.factors.get(type);
                     t.button(tt -> {
                         tt.table(it -> fac.buildIcon(it, false));
                         tt.add("").update(l -> {
@@ -176,13 +176,13 @@ public class Calculator extends BaseDialog{
                             p.defaults().uniform().fill().pad(2f);
                             final int[] co2 = {0};
                             float total = getFactor(type);
-                            IOEnitiy.defaults.each(def -> {
+                            BlockEnitiy.defaults.each(def -> {
                                 if(def.factors == null || def.factors.isEmpty()) return;
                                 if(!def.factors.contains(factor -> factor.type.equals(type) && factor.rate * total < 0f)) return;
                                 var targetfac = def.factors.min(fff -> fff.type.equals(type) ? fff.rate * Mathf.sign(total) : 0f);
                                 p.button(ttt -> {
-                                    ttt.image(def.content.uiIcon).size(32f);
-                                    ttt.add(def.content.localizedName).growX();
+                                    ttt.image(def.type.uiIcon).size(32f);
+                                    ttt.add(def.type.localizedName).growX();
                                     ttt.add(Strings.fixed(targetfac.rate, 3));
                                 }, Styles.flatBordert, () -> {
                                     bodies.add(def.copy());
@@ -216,8 +216,8 @@ public class Calculator extends BaseDialog{
                             UnlockableContent co;
                             @Override
                             public void act(float delta){
-                                if(finalI < bo.size && bo.get(finalI).content != co){
-                                    co = bo.get(finalI).content;
+                                if(finalI < bo.size && bo.get(finalI).type != co){
+                                    co = bo.get(finalI).type;
                                     this.setDrawable(co.uiIcon);
                                 }else if(finalI >= bo.size){
                                     co = null;
@@ -275,7 +275,7 @@ public class Calculator extends BaseDialog{
 
                 tb.table(icont -> {
                     var img = new Table(tc -> {
-                        tc.image(e.content.uiIcon).size(92f).with(c -> c.update(() -> c.setDrawable(e.content.uiIcon)));
+                        tc.image(e.type.uiIcon).size(92f).with(c -> c.update(() -> c.setDrawable(e.type.uiIcon)));
                         tc.add().growX();
                     });
                     img.setFillParent(true);
@@ -308,10 +308,10 @@ public class Calculator extends BaseDialog{
                                 usedTypes.each(type -> {
                                     float count = e.count;
                                     e.count = 0f;
-                                    float need = e.need(type, -getFactor(type));
+                                    float need = e.balance(type, -getFactor(type));
                                     e.count = count;
                                     if(need <= 0f) return;
-                                    p.button(balt -> FactorIO.factors.get(type).buildIcon(balt, true), () -> {
+                                    p.button(balt -> Factor.factors.get(type).buildIcon(balt, true), () -> {
                                         e.count = need;
                                         balancingDialog.hide();
                                     }).minSize(48f).pad(4f);
@@ -337,7 +337,7 @@ public class Calculator extends BaseDialog{
 
                 tb.row();
 
-                tb.table(e::buildFactors);
+                tb.table(e::buildBody);
 
                 e.factors.each(fac -> usedTypes.add(fac.type));
                 e.buckets.each(bucket -> bucket.factors.each(fac -> usedTypes.add(fac.type)));
@@ -352,7 +352,7 @@ public class Calculator extends BaseDialog{
         return getFactor(bodies, type);
     }
 
-    public float getFactor(Seq<IOEnitiy> entites, Object type){
+    public float getFactor(Seq<Entity> entites, Object type){
         return entites.sumf(enitiy -> enitiy.getRate(type));
     }
 }
