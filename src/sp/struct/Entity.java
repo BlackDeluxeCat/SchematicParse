@@ -69,8 +69,8 @@ public class Entity{
     public Entity copy(){
         var copy = new Entity(this.type);
         copy.count = this.count;
-        copy.handler = this.handler;
-        this.factors.each(c -> copy.factors.add(c.copy()));
+        copy.handler = this.handler.copy(copy);
+        copy.parse();
         return copy;
     }
 }

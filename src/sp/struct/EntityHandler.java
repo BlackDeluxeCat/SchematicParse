@@ -15,12 +15,16 @@ public class EntityHandler{
     public Seq<IOHandler> ioHandlers = new Seq<>();
     public Simulator simulator;
 
-    public EntityHandler(Entity e){
+    public EntityHandler(String n, Entity e, Simulator s, IOHandler... hs){
+        name = n;
         entity = e;
+        simulator = s;
+        ioHandlers.addAll(hs);
     }
 
-    public void addParser(IOHandler p){
-        ioHandlers.add(p);
+    public EntityHandler addIO(IOHandler io){
+        ioHandlers.add(io);
+        return this;
     }
 
     public void parse(){
@@ -39,6 +43,12 @@ public class EntityHandler{
     /** 构建配置界面 */
     public void buildConfig(Entity e, Table table){
         ioHandlers.each(p -> p.buildConfig(e, table));
+    }
+
+    public EntityHandler copy(Entity e){
+        var copy = new EntityHandler(name, e, simulator, ioHandlers.toArray());
+        this.ioHandlers.each(io -> copy.ioHandlers.add(io.copy()));//副本未初始化
+        return copy;
     }
 
     public interface Simulator{

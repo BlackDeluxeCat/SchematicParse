@@ -18,17 +18,23 @@ public class IOHandler{
     protected IOHandler(String name, Cons2<Entity, EntityHandler> parser, Cons2<Entity, Table> configBuilder){
         this.name = name;
         this.parser = parser;
+        this.configBuilder = configBuilder;
     }
 
     //暂时不清楚Handler是否该传入，那就传入吧！
     /** 生成一些Factor */
     public void parse(Entity e, EntityHandler h){
+        factors.clear();
         parser.get(e, h);
     }
 
     /** 为IOEntity的配置界面插入相关Factor的配置框。 */
     public void buildConfig(Entity e, Table h){
         configBuilder.get(e, h);
+    }
+
+    public IOHandler copy(){
+        return new IOHandler(name, parser, configBuilder);//副本未初始化
     }
 
     //原版无需处理ConsumePower的子类

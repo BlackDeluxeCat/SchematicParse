@@ -31,58 +31,15 @@ public class Calculator extends BaseDialog{
     public Calculator(String s){
         super(s);
         addCloseButton();
-        selectDialog.addCloseButton();
-        filterSelectDialog.addCloseButton();
-        balancingDialog.addCloseButton();
 
-        shown(() -> {
-            if(entitiesTab.size == 0){
-                var seq = new Seq<Entity>();
-                entitiesTab.add(seq);
-                entities = seq;
-            }
-            this.build();
-        });
-
-        onResize(this::build);
-
-        Events.on(EventType.ContentInitEvent.class, e -> {
-            buildSelect();
-        });
     }
 
-    public void buildSelect(){
-        selectDialog.cont.clear();
 
-        selectDialog.cont.pane(p -> {
-            p.defaults().fill().pad(2f);
-            final int[] co = {0};
-            BlockEnitiy.defaults.each(def -> {
-                if(def.factors == null || def.factors.isEmpty()) return;
-                p.button(t -> {
-                    t.image(def.type.uiIcon).size(32f);
-                    t.add(new SPLabel(def.type.localizedName, true, true)).size(128f, 24f);
-                }, Styles.flatBordert, () -> {
-                    entities.add(def.copy());
-                    rebuildEntities(entitiesPane);
-                    selectDialog.hide();
-                });
-                if(Mathf.mod(++co[0], 6) == 0) p.row();
-            });
-        }).grow();
-    }
 
     public void importShow(ObjectIntMap<UnlockableContent> list){
         entities = new Seq<>();
         entitiesTab.add(entities);
-        BlockEnitiy.defaults.each(def -> {
-            if(def.factors == null || def.factors.isEmpty()) return;
-            int count = list.get(def.type, 0);
-            if(count <= 0) return;
-            var copy = def.copy();
-            copy.count = count;
-            entities.add(copy);
-        });
+
         show();
     }
 
@@ -199,153 +156,6 @@ public class Calculator extends BaseDialog{
                 });
             });
         }).maxHeight(300f);
-    }
-
-    public void rebuildTabs(Table p){
-        p.clear();
-        p.left();
-        entitiesTab.each(bo -> {
-            p.table(tt -> {
-                tt.left();
-                //Title
-                tt.button(bb -> {
-                    bb.margin(4f).marginBottom(0f);
-                    for(int i = 0; i<7; i++){
-                        int finalI = i;
-                        bb.add(new Image(){
-                            UnlockableContent co;
-                            @Override
-                            public void act(float delta){
-                                if(finalI < bo.size && bo.get(finalI).type != co){
-                                    co = bo.get(finalI).type;
-                                    this.setDrawable(co.uiIcon);
-                                }else if(finalI >= bo.size){
-                                    co = null;
-                                    this.setDrawable(Core.atlas.has("whiteui") ? Core.atlas.find("whiteui") : Core.atlas.find("white"));
-                                    this.setSize(0f);
-                                }
-                                super.act(delta);
-                            }
-                        }).maxSize(32f);
-                    }
-
-                    var l = new SPLabel("", true, false);
-                    l.setText(() -> "" + (int)getFactor(bo, "size"));
-                    l.setAlignment(Align.center);
-                    bb.add(l).size(40f, 32f);
-                }, Styles.clearTogglei, () -> {
-                    entities = bo;
-                    rebuildEntities(entitiesPane);
-                }).grow().checked(bm -> entities == bo);
-
-                //Close button
-                tt.button("" + Iconc.cancel, Styles.nonet, () -> {
-                    int index = entitiesTab.indexOf(bo) - 1;
-                    entitiesTab.remove(bo);
-                    if(entities == bo){
-                        entities = entitiesTab.get(Math.max(0, index));
-                    }
-                    rebuildEntities(entitiesPane);
-                    float w = tt.getWidth();
-                    tt.setTransform(true);
-                    tt.actions(Actions.scaleTo(0f, 1f, 0.2f, a -> {
-                        float r = Mathf.pow(a, 3f);
-                        p.getCell(tt).width(w * ((1f-r) < 0.05f ? 0f : (1f-r)));
-                        return r;
-                    }), Actions.run(() -> {
-                        p.getCells().remove(p.getCell(tt));
-                        tt.remove();
-                    }));
-                }).size(32f).visible(() -> entitiesTab.size > 1);
-
-            }).checked(bm -> entities == bo);
-        });
-    }
-
-    public void rebuildEntities(Table t){
-        needRebuildStats = true;
-        t.clear();
-        t.name = "Cfg Table";
-        final int[] co = {0};
-        //逐IO建筑构造UI界面
-        entities.each(e -> {
-            t.pane(tb -> {
-                tb.image().growX().height(4f).color(Color.gold);
-                tb.row();
-
-                tb.table(icont -> {
-                    var img = new Table(tc -> {
-                        tc.image(e.type.uiIcon).size(92f).with(c -> c.update(() -> c.setDrawable(e.type.uiIcon)));
-                        tc.add().growX();
-                    });
-                    img.setFillParent(true);
-                    var lcc = new Label(() -> "" + Mathf.ceil(e.count - Mathf.FLOAT_ROUNDING_ERROR));
-                    lcc.setFontScale(1.8f);
-                    //lcc.setColor(1f, 1f, 1f, 1f);
-                    lcc.setFillParent(true);
-                    lcc.setAlignment(Align.bottomLeft);
-                    var lc = new Label(() -> Strings.fixed(e.count, 3));
-                    lc.setFillParent(true);
-                    lcc.setStyle(Styles.outlineLabel);
-                    lc.setAlignment(Align.topLeft);
-                    lc.setColor(0.9f, 0.8f, 1f, 0.6f);
-                    var buttons = new Table(tc -> {
-                        tc.defaults().right();
-
-                        tc.add().growX();
-                        tc.button("" + Iconc.cancel, Styles.cleart, () -> {
-                            entities.remove(e);
-                            rebuildEntities(t);
-                        }).size(32f);
-                        tc.row();
-
-                        tc.add().growX();
-                        //配平按钮和配平对话框
-                        tc.button(uiBalancing, Styles.cleari, 24f, () -> {
-                            balancingDialog.cont.clear();
-                            balancingDialog.cont.pane(p -> {
-                                final int[] co2 = {0};
-                                usedTypes.each(type -> {
-                                    float count = e.count;
-                                    e.count = 0f;
-                                    float need = e.balance(type, -getFactor(type));
-                                    e.count = count;
-                                    if(need <= 0f) return;
-                                    p.button(balt -> Factor.factors.get(type).buildIcon(balt, true), () -> {
-                                        e.count = need;
-                                        balancingDialog.hide();
-                                    }).minSize(48f).pad(4f);
-                                    if(Mathf.mod(++co2[0], 6) == 0) p.row();
-                                });
-                            });
-                            balancingDialog.show();
-                        }).size(32f);
-                        tc.row();
-
-                        tc.add().growX();
-                        tc.field(String.valueOf(e.count), s -> e.count = Strings.parseFloat(s, 0f)).maxWidth(80f).height(32f).with(f -> {
-                            f.setAlignment(Align.right);
-                            f.update(() -> {
-                                if(!f.hasKeyboard()) f.setText(String.valueOf(e.count));
-                            });
-                        });
-                    });
-                    buttons.setFillParent(true);
-
-                    icont.stack(img, lcc, lc, buttons).width(128f).height(92f);
-                });
-
-                tb.row();
-
-                tb.table(e::buildBody);
-
-                e.factors.each(fac -> usedTypes.add(fac.type));
-                e.buckets.each(bucket -> bucket.factors.each(fac -> usedTypes.add(fac.type)));
-
-            }).top().maxHeight(300f).pad(4f);
-
-            if(Mathf.mod(++co[0], Math.max((int)(Core.graphics.getWidth() / Scl.scl(160)), 1)) == 0) t.row();
-        });
     }
 
     public float getFactor(Object type){
