@@ -1,40 +1,41 @@
 package sp;
 
-import arc.*;
-import arc.graphics.*;
 import arc.math.*;
 import arc.scene.actions.*;
-import arc.scene.ui.*;
+import arc.scene.style.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
-import arc.util.*;
+import mindustry.content.*;
 import mindustry.ctype.*;
-import mindustry.game.*;
-import mindustry.gen.*;
-import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 import sp.struct.*;
-import sp.ui.*;
-
-import static sp.SchematicParse.*;
+import sp.utils.*;
 
 public class Calculator extends BaseDialog{
     public static Calculator ui = new Calculator("@ui.calculator.title");
-
     public Seq<Seq<Entity>> entitiesTab = new Seq<>();
     public Seq<Entity> entities = new Seq<>();
     public ObjectSet<Object> usedTypes = new ObjectSet<>();
     public BaseDialog selectDialog = new BaseDialog("@ui.selectfactory.title"), filterSelectDialog = new BaseDialog("@ui.selectfactory.title"), balancingDialog = new BaseDialog("@ui.balancing.title");
-    protected Table entitiesPane;
+    protected Table entitiesUI, selectUI, selectTable, statsTable, configUI;
+
+    public UnlockableContent currentSelect;
+    public boolean showStats;
     protected boolean needRebuildStats = true;
 
     public Calculator(String s){
         super(s);
         addCloseButton();
 
+        cont.add(entitiesUI).grow();
+        cont.stack(selectUI, configUI).self(c -> {
+            if(ScreenSense.horizontal()){
+                c.growY().width(400f);
+            }else{
+                c.growX().height(400f);
+            }
+        });
     }
-
-
 
     public void importShow(ObjectIntMap<UnlockableContent> list){
         entities = new Seq<>();
@@ -43,119 +44,92 @@ public class Calculator extends BaseDialog{
         show();
     }
 
-    public void build(){
-        usedTypes.clear();
+    public void buildEntities(){
+        var et = entitiesUI;
+        //tabs
+        et.table();
+        et.row();
 
-        cont.clear();
-        cont.table(t -> {
-            t.name = "Tab Table";
-            t.background(Styles.grayPanel);
-            t.margin(4f, 4f, 0f, 0f);
+        //main
+        et.pane(p -> {
+            int i = 0;
+            for(var e : entities){
+                e.build(p);
+                if(i++ > 4) row();
+            }
+        }).grow();
+    }
 
-            t.pane(p -> {
-                rebuildTabs(p);
-            }).with(p -> {
-                p.setForceScroll(true, false);
-                p.setScrollingDisabled(false, true);
-                p.setScrollBarPositions(false, false);
-                p.setFadeScrollBars(false);
-                p.setOverscroll(false, false);
-            }).growX();
+    public void buildSelect(){
+        var st = selectUI;
+        //search
 
-            t.table(toolt -> {
-                toolt.defaults().size(50f);
-                toolt.button(Iconc.copy + "", Styles.flatt, () -> {
-                    var seq = new Seq<Entity>();
-                    entities.each(e -> seq.add(e.copy()));
-                    entities = seq;
-                    entitiesTab.add(seq);
+        //icon
+        if(showStats){
+            buildStatsTable();
+            st.pane(statsTable).grow();
+        }else{
+            st.pane(selectTable).grow();
+        }
 
-                    build();
-                });
+        st.row();
 
-                toolt.button(Iconc.add + "", Styles.flatt, () -> {
-                    var seq = new Seq<Entity>();
-                    entitiesTab.add(seq);
-                    entities = seq;
+        //info & switch
+        st.table(t -> {
+            if(!showStats){
+                st.button("Add", () -> {
+                    addNewEntity(currentSelect);
+                }).disabled(b -> currentSelect == null).size(32f);
+                st.image(() -> currentSelect == null ? Blocks.air.uiIcon : currentSelect.uiIcon).size(32f);
+                st.label(() -> currentSelect == null ? "" : currentSelect.description).growX();
+            }
+            st.button("Switch", () -> {
+                showStats = !showStats;
+                buildSelect();
+            }).right();
+        });
+    }
 
-                    build();
-                });
-            });
-        }).height(50f).growX();
+    public void buildConfig(Entity e){
+        configUI.clear();
 
-        cont.row();
+        //title, delete
+        configUI.table(t -> {
+            e.buildHead(t);
+            t.add(e.type.localizedName);
+        });
+        configUI.row();
 
-        cont.table(t -> {
-            t.name = "Add Table";
-            t.defaults().height(100f);
-            t.button("@ui.addfactory", () -> selectDialog.show()).growX();
-            t.button(Iconc.blockItemSource + "\n" + Core.bundle.get("ui.addsource") , () -> {
-                entities.add(SourceEntity.source.copy());
-                rebuildEntities(entitiesPane);
-            }).size(100f);
-        }).growX();
+        //cfgs
+        configUI.table(t -> e.buildConfig(configUI)).grow();
 
-        cont.row();
+        //balancing, close
 
-        cont.pane(t -> {
-            entitiesPane = t;
-            rebuildEntities(t);
-        }).growY();
 
-        cont.row();
+        configUI.actions(Actions.translateBy(configUI.translation.x, configUI.translation.y), Actions.translateBy(-configUI.translation.x, -configUI.translation.y, 1f, Interp.fade));
+    }
 
-        cont.pane(t -> {
-            t.name = "Stat Table";
-            t.defaults().pad(4f).fill();
+    public void closeConfig(){
+        configUI.actions(Actions.translateBy(configUI.translation.x, configUI.translation.y, 1f, Interp.fade));
+    }
 
-            t.update(() -> {
-                if(!needRebuildStats) return;
-                needRebuildStats = false;
-                t.clear();
-                final int[] co = {0};
+    public void buildSelectTable(){
+        selectTable.clear();
+        int i = 0;
+        for(var e : Entities.defaults){
+            selectTable.button(new TextureRegionDrawable(e.key.uiIcon), () -> {
+                currentSelect = e.key;
+            }).size(32f);
+            if(i++ > 10) selectTable.row();
+        }
+    }
 
-                usedTypes.each(type -> {
-                    var fac = Factor.factors.get(type);
-                    t.button(tt -> {
-                        tt.table(it -> fac.buildIcon(it, false));
-                        tt.add("").update(l -> {
-                            float f = getFactor(type);
-                            l.setText((f >= 0f ? "+":"") + Strings.autoFixed(f, 3));
-                            l.setColor(Mathf.zero(f, 0.01f) ? Color.gray : f > 0 ? Color.green : Color.coral);
-                        });
-                    }, Styles.flatBordert, () -> {
-                        filterSelectDialog.cont.clear();
-                        filterSelectDialog.cont.table(taaa -> {
-                            fac.buildIcon(taaa, true);
-                            taaa.add(Strings.fixed(getFactor(type), 3));
-                        }).row();
-                        filterSelectDialog.cont.pane(p -> {
-                            p.defaults().uniform().fill().pad(2f);
-                            final int[] co2 = {0};
-                            float total = getFactor(type);
-                            BlockEnitiy.defaults.each(def -> {
-                                if(def.factors == null || def.factors.isEmpty()) return;
-                                if(!def.factors.contains(factor -> factor.type.equals(type) && factor.rate * total < 0f)) return;
-                                var targetfac = def.factors.min(fff -> fff.type.equals(type) ? fff.rate * Mathf.sign(total) : 0f);
-                                p.button(ttt -> {
-                                    ttt.image(def.type.uiIcon).size(32f);
-                                    ttt.add(def.type.localizedName).growX();
-                                    ttt.add(Strings.fixed(targetfac.rate, 3));
-                                }, Styles.flatBordert, () -> {
-                                    entities.add(def.copy());
-                                    rebuildEntities(entitiesPane);
-                                    filterSelectDialog.hide();
-                                });
-                                if(Mathf.mod(++co2[0], 3) == 0) p.row();
-                            });
-                        }).grow();
-                        filterSelectDialog.show();
-                    });
+    public void buildStatsTable(){
 
-                    if(Mathf.mod(++co[0], 6) == 0) t.row();
-                });
-            });
-        }).maxHeight(300f);
+    }
+
+    public void addNewEntity(UnlockableContent u){
+        entities.add(Entities.get(u).copy());
     }
 
     public float getFactor(Object type){

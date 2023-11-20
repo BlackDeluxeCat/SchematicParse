@@ -48,8 +48,6 @@ public class Entity{
         handler.ioHandlers.each(p -> p.buildConfig(this, table));
     }
 
-
-
     public float getRate(Object type){
         return factors.sumf(f -> type.equals(f.type) ? f.getRate() : 0f);
     }

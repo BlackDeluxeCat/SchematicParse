@@ -38,9 +38,6 @@ public class SchematicParse extends Mod{
         Events.on(ClientLoadEvent.class, e -> {
             initStyles();
             schelogic();
-            Time.run(60f, () -> {
-                Calculator.ui.buildSelect();
-            });
         });
     }
 
