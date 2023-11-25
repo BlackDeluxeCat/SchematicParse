@@ -1,29 +1,26 @@
 package sp.struct;
 
 import arc.graphics.*;
-import arc.math.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
 import mindustry.ctype.*;
 import sp.ui.*;
-import sp.utils.*;
 
-import static sp.SchematicParse.floatf;
+import static sp.SchematicParse.*;
 
 /** Production factor type.*/
 public class Factor<T>{
     /**Contains instances of every factor. Used for SourceIOEntity.*/
     public static ObjectMap<Object, Factor<?>> factors = new ObjectMap<>();
-    public static float smallSize = 24f;
+    public static float smallSize = 32f;
 
     public final T type;
     public String tag;
     public Object group;
 
     /** amount per produce*/
-    public float amount;
-    public float time = 1f;//sec
+    protected float rate;
     /**If false, factor count will be rounded up.*/
     public boolean continuous = true;
 
@@ -37,7 +34,7 @@ public class Factor<T>{
     }
 
     public Factor<T> set(float a, boolean en){
-        amount = a;
+        rate = a;
         enable = en;
         return this;
     }
@@ -53,13 +50,17 @@ public class Factor<T>{
         efficiency = eff;
     }
 
+    public float getRawRate(){
+        return rate;
+    }
+
     public float getRate(){
-        return enable ? amount / time * efficiency : 0f;
+        return enable ? rate * efficiency : 0f;
     }
 
     /** Must be overwritten. */
     public Factor<T> copy(){
-        var n = new Factor<>(type, amount, enable);
+        var n = new Factor<>(type, rate, enable);
         n.tag = tag;
         n.group = group;
         n.continuous = continuous;
@@ -69,7 +70,7 @@ public class Factor<T>{
 
     /** 主要用于物品源工厂自定义界面 */
     public void build(Table table){
-        table.field(Strings.fixed(amount, 3), floatf, s -> amount = Strings.parseFloat(s, 1f)).width(90f).height(smallSize);
+        table.field(Strings.fixed(rate, 3), floatf, s -> rate = Strings.parseFloat(s, 1f)).width(90f).height(smallSize);
     }
 
     public void buildIcon(Table table, boolean name){}
@@ -95,7 +96,7 @@ public class Factor<T>{
 
         @Override
         public UnlockableContentFactor copy(){
-            var n = new UnlockableContentFactor(type, amount, enable);
+            var n = new UnlockableContentFactor(type, rate, enable);
             n.continuous = continuous;
             return n;
         }
@@ -123,7 +124,7 @@ public class Factor<T>{
 
         @Override
         public CustomFactor copy(){
-            var n = new CustomFactor(type, amount, enable);
+            var n = new CustomFactor(type, rate, enable);
             n.continuous = continuous;
             return n;
         }

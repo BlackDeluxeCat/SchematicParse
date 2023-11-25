@@ -6,6 +6,7 @@ import arc.scene.ui.*;
 
 public class SPLabel extends Label{
     public boolean fontAutoSclX = false, fontAutoSclY = false;
+    public float scl = 0.5f;
     public SPLabel(Prov<CharSequence> sup, boolean autosclX, boolean autosclY){
         super(sup);
         setFontAutoScale(autosclX, autosclY);
@@ -29,9 +30,9 @@ public class SPLabel extends Label{
             setFontScale(1f);
             setWrap(false);
             layout();
-            if(fontAutoSclX && !fontAutoSclY) setFontScaleX(Mathf.clamp(height * width / layout.height / layout.width / fontScaleY, 0.1f, 1f));
-            else if(!fontAutoSclX && fontAutoSclY) setFontScaleY(Mathf.clamp(height * width / layout.height / layout.width / fontScaleX, 0.1f, 1f));
-            else setFontScale(Mathf.clamp(Mathf.sqrt(height * width / layout.height / layout.width), 0.1f, 1f));
+            if(fontAutoSclX && !fontAutoSclY) setFontScaleX(Mathf.clamp(getHeight() * getWidth() / layout.height / layout.width / fontScaleY * scl, 0.1f, 1f));
+            else if(!fontAutoSclX && fontAutoSclY) setFontScaleY(Mathf.clamp(getHeight() * getWidth() / layout.height / layout.width / fontScaleX * scl, 0.1f, 1f));
+            else setFontScale(Mathf.clamp(Mathf.sqrt(getHeight() * getWidth() / layout.height / layout.width * scl), 0.1f, 1f));
             setWrap(true);
         }
     }

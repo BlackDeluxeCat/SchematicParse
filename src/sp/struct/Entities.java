@@ -1,7 +1,9 @@
 package sp.struct;
 
 import arc.struct.*;
+import mindustry.*;
 import mindustry.ctype.*;
+import sp.struct.EntityHandler.*;
 
 public class Entities{
     public static OrderedMap<UnlockableContent, Entity> defaults = new OrderedMap<>();
@@ -16,6 +18,9 @@ public class Entities{
     }
 
     public static void generate(){
-
+        for(var block : Vars.content.blocks()){
+            var entity = get(block);
+            entity.handler = new EntityHandler("", entity, Seq.with(Simulator.none, Simulator.overdriveAll), IOHandler.size, IOHandler.consumePower);
+        }
     }
 }

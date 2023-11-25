@@ -1,11 +1,14 @@
 package sp.struct;
 
+import arc.graphics.*;
 import arc.math.*;
-import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
 import mindustry.ctype.*;
+import sp.utils.*;
+
+import static sp.SchematicParse.floatf;
 
 /** 实体工厂包装类 */
 public class Entity{
@@ -20,32 +23,35 @@ public class Entity{
         this.type = type;
     }
 
-    public void build(Table table){
-        table.table(this::buildHead);
-        table.row();
-        table.pane(this::buildBody).growY().minHeight(64f);
-    }
-
     public void buildHead(Table table){
-        var image = new Image(type.uiIcon);
-        var infos = new Table(t -> {
+        table.table(t -> {
+            t.defaults().left().width(1f);
             t.add().growY();
+            t.label(() -> Strings.fixed(count, 4)).color(Color.pink);
             t.row();
-            t.label(() -> Strings.autoFixed(count, 4)).left();
-            t.row();
-            t.label(() -> String.valueOf(Mathf.ceil(count))).left();
-        });
-        table.stack(image, infos).size(64f);
+            t.label(() -> ""+Mathf.ceil(count)).fontScale(1.5f);
+        }).growX();
+        table.image(type.uiIcon).size(64f).right();
     }
 
-    public void buildBody(Table t){
-        t.defaults().minHeight(24f);
-        handler.buildConfig(this, t);
-        //factors.each(f -> f.enable, f -> t.label(() -> f.formatter.get(f.amount)));
+    public void buildInfos(Table t){
+        t.defaults().minHeight(32f).padTop(4f);
+        factors.each(f -> f.enable, f -> {
+            f.buildIcon(t, false);
+            t.label(() -> FloatStrf.sgnf4.get(f.getRate()));
+            t.row();
+        });
     }
 
     public void buildConfig(Table table){
-        handler.ioHandlers.each(p -> p.buildConfig(this, table));
+        table.field(Strings.fixed(count, 5), floatf, s -> count = Strings.parseFloat(s, 1f)).width(128f).height(64f);
+        table.row();
+        handler.ioHandlers.each(p -> {
+            table.table(t -> {
+                p.buildConfig(this, t);
+            });
+            table.row();
+        });
     }
 
     public float getRate(Object type){
@@ -54,14 +60,14 @@ public class Entity{
 
     public float balance(Object type, float need){
         float rate = getRate(type);
-        if(Mathf.zero(rate, 0.00001f)) return 0f;
+        if(Mathf.zero(rate, 0.00001f) || Mathf.zero(need, 0.00001f)) return 0f;
         return need / rate;
     }
 
     public void parse(){
         factors.clear();
-        handler.parse();
-        handler.getFactors(factors);
+        handler.ioHandlers.each(p -> p.parse(handler.entity, handler));
+        factors.add(handler.seqFactors());
     }
 
     public Entity copy(){

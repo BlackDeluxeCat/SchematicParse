@@ -36,8 +36,9 @@ public class SchematicParse extends Mod{
 
     public SchematicParse(){
         Events.on(ClientLoadEvent.class, e -> {
+            Entities.generate();
             initStyles();
-            schelogic();
+            scheParseUI();
         });
     }
 
@@ -51,7 +52,7 @@ public class SchematicParse extends Mod{
         uiBalancing = new TextureRegionDrawable(Core.atlas.find("schematicparse-ui-balance"));
     }
 
-    public static void schelogic(){
+    public static void scheParseUI(){
         ui.schematics.buttons.button("@ui.calculator", () -> Calculator.ui.show());
 
         SchematicsDialog.SchematicInfoDialog info = Reflect.get(SchematicsDialog.class, ui.schematics, "info");

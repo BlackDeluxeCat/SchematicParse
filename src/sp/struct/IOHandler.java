@@ -38,14 +38,26 @@ public class IOHandler{
     }
 
     //原版无需处理ConsumePower的子类
-    public static IOHandler consumePower = new IOHandler("power", (e, h) -> {
-        if(e.type instanceof Block b && b.hasPower && b.consPower != null){
-            e.factors.add(new CustomFactor("power", b.consPower.usage * ticks, !b.consPower.optional));
+    public static IOHandler size = new IOHandler("size", (e, h) -> {
+        if(e.type instanceof Block b){
+            e.factors.add(new CustomFactor("size", b.size * b.size, true));
         }
     }, (e, t) -> {
-        e.factors.select(f -> f.type.equals("power")).each(f -> {
-            t.table(f::build);
-        });
+        e.factors.select(f -> f.type.equals("size")).each(f -> t.table(f::build));
+    });
+
+    public static IOHandler overdrive = new IOHandler("overdrive", (e, h) -> {
+        e.factors.add(new CustomFactor("overdrive", 1f, true));
+    }, (e, t) -> {
+        e.factors.select(f -> f.type.equals("overdrive")).each(f -> t.table(f::build));
+    });
+
+    public static IOHandler consumePower = new IOHandler("power", (e, h) -> {
+        if(e.type instanceof Block b && b.hasPower && b.consPower != null){
+            e.factors.add(new CustomFactor("power", -b.consPower.usage * ticks, !b.consPower.optional));
+        }
+    }, (e, t) -> {
+        e.factors.select(f -> f.type.equals("power")).each(f -> t.table(f::build));
     });
 
     public static IOHandler consumeLiquid = new IOHandler("liquid", (e, h) -> {
