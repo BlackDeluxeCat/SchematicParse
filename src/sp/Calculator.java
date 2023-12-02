@@ -1,5 +1,6 @@
 package sp;
 
+import arc.*;
 import arc.graphics.*;
 import arc.math.*;
 import arc.scene.actions.*;
@@ -16,23 +17,24 @@ import mindustry.ui.dialogs.*;
 import sp.struct.*;
 import sp.utils.*;
 
+import java.util.*;
+
 public class Calculator extends BaseDialog{
     public static Calculator ui = new Calculator("@ui.calculator.title");
     public Seq<Seq<Entity>> entitiesTab = new Seq<>();
     public Seq<Entity> entities = new Seq<>();
     public ObjectMap<Object, Factor<?>> usedTypes = new ObjectMap<>();
 
-    protected Table entitiesUI, iconsUI, selectTable, statsTable, configUI;
+    protected Table entitiesUI, iconsTable, selectUI, statsTable, configUI;
     protected BaseDialog balancingDialog;
 
     public UnlockableContent currentSelect;
-    public boolean showStats;
 
     public Calculator(String s){
         super(s);
         entitiesUI = new Table();
-        iconsUI = new Table();
-        selectTable = new Table();
+        iconsTable = new Table();
+        selectUI = new Table();
         statsTable = new Table();
         configUI = new Table();
 
@@ -40,7 +42,6 @@ public class Calculator extends BaseDialog{
         buildEntities();
         buildSelectTable();
         buildStatsTable();
-        buildSelect();
         build();
 
         balancingDialog = new BaseDialog("@ui.balancing");
@@ -52,7 +53,13 @@ public class Calculator extends BaseDialog{
     public void build(){
         cont.clear();
 
-        cont.add(entitiesUI).grow();
+        cont.table(t -> {
+            t.add(entitiesUI).growX();
+            t.row();
+            t.image().height(2f).growX().color(Color.pink);
+            t.row();
+            t.add(statsTable).growX().height(ScreenSense.height(0.2f/Scl.scl()));
+        }).grow();
 
         if(ScreenSense.horizontal()){
             cont.image().width(2f).growY().color(Color.pink);
@@ -62,13 +69,15 @@ public class Calculator extends BaseDialog{
             cont.row();
         }
 
-        cont.stack(iconsUI, configUI).self(c -> {
+        cont.stack(selectUI, configUI).self(c -> {
             if(ScreenSense.horizontal()){
                 c.growY().width(450f);
             }else{
-                c.growX().height(450f);
+                c.growX().height(300f);
             }
         });
+
+        animeConfig(false);
     }
 
     public void importShow(ObjectIntMap<UnlockableContent> list){
@@ -79,7 +88,7 @@ public class Calculator extends BaseDialog{
     }
 
     public void onUpdate(){
-        entities.each(e -> e.handler.handle());
+        entities.each(e -> e.handler.handle(e));
         buildStatsTable();
         buildEntities();
     }
@@ -101,24 +110,27 @@ public class Calculator extends BaseDialog{
                 p.table(t -> {
                     t.table(e::buildHead).growX();
                     t.row();
-                    t.pane(e::buildInfos).growY().minHeight(64f).maxHeight(300f);
-                    t.clicked(() -> buildConfig(e));
+                    t.pane(tt -> {
+                        e.info = tt;
+                        e.buildInfos(tt);
+                    }).growY().minHeight(64f).maxHeight(300f);
+                    t.clicked(() -> Time.run(1f, () -> buildConfig(e)));
                 });
             }
         }).grow();
-    }
-
-    public void buildSelect(){
-        var st = iconsUI;
-        st.clear();
-        st.stack(statsTable, selectTable).grow();
     }
 
     public void buildConfig(Entity e){
         configUI.clear();
         configUI.background(Styles.grayPanel);
         configUI.touchable = Touchable.enabled;
-        configUI.button(">>", this::closeConfig).growY().left().width(50f);
+
+        if(ScreenSense.horizontal()){
+            configUI.button(">", () -> animeConfig(false)).growY().left().width(30f).get().getLabel().setFontScale(1f, 2f);
+        }else{
+            configUI.button("V", () -> animeConfig(false)).growX().left().height(30f).get().getLabel().setFontScale(2f, 1f);
+            configUI.row();
+        }
 
         configUI.table(cont -> {
             //title, delete
@@ -127,51 +139,91 @@ public class Calculator extends BaseDialog{
                 t.labelWrap(e.type.localizedName).growX().labelAlign(Align.center);
                 t.button("" + Iconc.cancel, () -> {
                     entities.remove(e);
-                    closeConfig();
+                    animeConfig(false);
                     onUpdate();
                 }).size(64f);
-            }).growX().pad(20f).height(300f);
+            }).growX().pad(20f);
             cont.row();
 
             //cfgs
-            cont.table(e::buildConfig).grow();
+            cont.table(e::buildConfig).grow().get().clicked(() -> {
+                e.updateInfos();
+                buildStatsTable();
+            });
             cont.row();
 
             //balancing, close
             cont.table(t -> {
-                t.defaults().top();
+                t.defaults().top().growX();
                 t.button("Balancing", () -> {
                     buildFactoryBalancing(e);
-                }).grow();
-            }).growX().pad(20f).height(100f);
+                });
+            }).growX().pad(20f);
         }).grow();
 
         //popup anime
-        configUI.actions(Actions.translateTo(configUI.getWidth(), 0f), Actions.translateBy(-configUI.getWidth(), 0f, 0.2f, Interp.fastSlow));
+        animeConfig(true);
     }
 
-    public void closeConfig(){
-        configUI.actions(Actions.translateBy(configUI.getWidth(), 0f, 0.2f, Interp.fastSlow));
+    public void animeConfig(boolean out){
+        float bottom = this.buttons.getHeight();
+        float w = configUI.getWidth()*1.1f, h = configUI.getHeight()*1.1f + bottom;
+        float x = configUI.translation.x, y = configUI.translation.y;
+        boolean hor = ScreenSense.horizontal();
+        configUI.clearActions();
+        configUI.actions(Actions.translateBy(-x + (!hor ? 0f : out ? 0 : w), -y + (hor ? 0f : out ? 0f : -h), 0.3f, Interp.fastSlow));
+    }
+
+    public String textFilter = "";
+    public Factor<?> factorFilter;
+    public void buildIconsTable(){
+        iconsTable.clear();
+        int i = 0;
+        for(var e : Entities.defaults.keys()){
+            if(!Objects.equals(textFilter, "") && !e.localizedName.contains(textFilter) && !e.name.contains(textFilter)) continue;
+            if(factorFilter != null && !Entities.get(e).factors.contains(f -> f.type.equals(factorFilter.type))) continue;
+
+            if(Mathf.mod(i++, 8) == 0) iconsTable.row();
+            iconsTable.button(new TextureRegionDrawable(e.uiIcon), () -> {
+                currentSelect = e;
+            }).size(48f);
+        }
     }
 
     public void buildSelectTable(){
-        var st = selectTable;
+        var st = selectUI;
         st.clear();
-        st.visible(() -> !showStats);
 
         //search
-        //TODO
+        st.table(t -> {
+            t.field(textFilter, str -> {
+                textFilter = str;
+                buildIconsTable();
+            }).growX().with(tf -> {
+                tf.setMessageText("\\__");
+                tf.update(() -> {
+                    if(textFilter.equals("")) tf.clearText();
+                });
+            });
+
+            t.button("X", () -> {
+                textFilter = "";
+                buildIconsTable();
+            }).size(32f);
+
+            t.label(() -> factorFilter == null ? "" : factorFilter.type.toString()).size(32f);
+
+            t.button("X", () -> {
+                factorFilter = null;
+                buildIconsTable();
+            }).size(32f);
+        }).growX().pad(10f);
+
+        st.row();
 
         //icon
-        st.pane(t -> {
-            int i = 0;
-            for(var e : Entities.defaults.keys()){
-                if(Mathf.mod(i++, 8) == 0) t.row();
-                t.button(new TextureRegionDrawable(e.uiIcon), () -> {
-                    currentSelect = e;
-                }).size(48f);
-            }
-        }).grow();
+        buildIconsTable();
+        st.pane(iconsTable).grow();
 
         st.row();
 
@@ -182,39 +234,31 @@ public class Calculator extends BaseDialog{
             }).disabled(b -> currentSelect == null).size(64f);
             t.image(() -> currentSelect == null ? Blocks.air.uiIcon : currentSelect.uiIcon).size(64f);
             t.labelWrap(() -> currentSelect == null ? "" : currentSelect.localizedName).growX();
-            t.button("Switch", () -> {
-                showStats = !showStats;
-            }).right();
-        }).growX().minHeight(200f);
+        }).growX().minHeight(100f);
     }
 
     public void buildStatsTable(){
         var st = statsTable;
         usedTypes.clear();
         entities.each(e -> {
-            e.factors.each(f -> usedTypes.put(f.type, f));
+            e.factors.each(f -> !Mathf.zero(f.getRate()), f -> usedTypes.put(f.type, f));
         });
 
         st.clear();
-        st.visible(() -> showStats);
 
         st.pane(p -> {
             final int[] i = new int[1];
             usedTypes.each((type, f) -> {
-                if(Mathf.mod(i[0]++, 3) == 0) p.row();
+                if(Mathf.mod(i[0]++, 4) == 0) p.row();  //TODO dynamic table
                 p.button(b -> {
                     b.table(t -> f.buildIcon(t, false));
                     b.labelWrap(() -> Strings.autoFixed(getRate(type), 4)).width(90f);
-                }, () -> {});
+                }, () -> {
+                    factorFilter = f;
+                    buildIconsTable();
+                });
             });
-        });
-
-        st.row();
-
-        //info & switch
-        st.table(t -> {
-            t.button("Switch", () -> showStats = !showStats).right();
-        }).growX();
+        }).grow();
     }
 
 
@@ -252,7 +296,7 @@ public class Calculator extends BaseDialog{
     }
 
     public void addNewEntity(UnlockableContent u){
-        entities.add(Entities.get(u).copy());
+        entities.add(Entities.get(u).copy(false));
         onUpdate();
     }
 

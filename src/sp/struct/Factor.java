@@ -5,7 +5,9 @@ import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
 import mindustry.ctype.*;
+import mindustry.world.meta.*;
 import sp.ui.*;
+import sp.utils.*;
 
 import static sp.SchematicParse.*;
 
@@ -16,8 +18,8 @@ public class Factor<T>{
     public static float smallSize = 32f;
 
     public final T type;
-    public String tag;
-    public Object group;
+    public String group;
+    public Object tag;
 
     /** amount per produce*/
     protected float rate;
@@ -29,19 +31,27 @@ public class Factor<T>{
 
     public Factor(T t, float a, boolean en){
         type = t;
-        set(a, en);
+        rate = a;
+        enable = en;
         factors.put(t, this);
     }
 
-    public Factor<T> set(float a, boolean en){
-        rate = a;
+    public Factor<T> rate(float r){
+        rate = r;
+        return this;
+    }
+
+    public Factor<T> enable(boolean en){
         enable = en;
         return this;
     }
 
-    public Factor<T> set(String tag, Object group, boolean continuous){
+    public Factor<T> tag(Object tag){
         this.tag = tag;
-        this.group = group;
+        return this;
+    }
+
+    public Factor<T> continuous(boolean continuous){
         this.continuous = continuous;
         return this;
     }
@@ -61,16 +71,22 @@ public class Factor<T>{
     /** Must be overwritten. */
     public Factor<T> copy(){
         var n = new Factor<>(type, rate, enable);
-        n.tag = tag;
         n.group = group;
+        n.tag = tag;
         n.continuous = continuous;
         n.efficiency = efficiency;
         return n;
     }
 
     /** 主要用于物品源工厂自定义界面 */
-    public void build(Table table){
+    public void buildEdit(Table table){
         table.field(Strings.fixed(rate, 3), floatf, s -> rate = Strings.parseFloat(s, 1f)).width(90f).height(smallSize);
+    }
+
+    public void buildRate(Table table, boolean n){
+        buildIcon(table, n);
+        table.label(() -> "" + getRate()).width(90f).height(smallSize);
+        table.label(() -> FloatStrf.f2.get(efficiency * 100f) + StatUnit.percent.localized()).fontScale(0.4f);
     }
 
     public void buildIcon(Table table, boolean name){}
@@ -81,11 +97,11 @@ public class Factor<T>{
         }
 
         @Override
-        public void build(Table table){
+        public void buildEdit(Table table){
             table.image(type.uiIcon).size(smallSize).update(i -> i.setColor(enable ? Color.white : Color.gray)).with(c -> {
                 c.clicked(() -> enable = !enable);
             });
-            super.build(table);
+            super.buildEdit(table);
         }
 
         @Override
@@ -97,7 +113,10 @@ public class Factor<T>{
         @Override
         public UnlockableContentFactor copy(){
             var n = new UnlockableContentFactor(type, rate, enable);
+            n.group = group;
+            n.tag = tag;
             n.continuous = continuous;
+            n.efficiency = efficiency;
             return n;
         }
     }
@@ -109,11 +128,11 @@ public class Factor<T>{
         }
 
         @Override
-        public void build(Table table){
+        public void buildEdit(Table table){
             table.add(new SPLabel(type, true, true)).size(smallSize).update(i -> i.setColor(enable ? Color.white : Color.gray)).with(c -> {
                 c.clicked(() -> enable = !enable);
             });
-            super.build(table);
+            super.buildEdit(table);
         }
 
         @Override
@@ -125,7 +144,10 @@ public class Factor<T>{
         @Override
         public CustomFactor copy(){
             var n = new CustomFactor(type, rate, enable);
+            n.group = group;
+            n.tag = tag;
             n.continuous = continuous;
+            n.efficiency = efficiency;
             return n;
         }
     }
