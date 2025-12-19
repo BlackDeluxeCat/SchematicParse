@@ -8,14 +8,18 @@ import arc.scene.ui.*;
 import arc.scene.ui.layout.*;
 import arc.struct.*;
 import arc.util.*;
+import mindustry.*;
 import mindustry.ctype.*;
 import mindustry.game.*;
 import mindustry.gen.*;
+import mindustry.graphics.*;
 import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 import sp.struct.*;
 import sp.ui.*;
 
+import static mindustry.Vars.mobile;
+import static mindustry.gen.Tex.windowEmpty;
 import static sp.SchematicParse.*;
 
 public class Calculator extends BaseDialog{
@@ -31,6 +35,25 @@ public class Calculator extends BaseDialog{
     public Calculator(String s){
         super(s);
         addCloseButton();
+        buttons.button("@ui.calculator.help", () -> {
+            BaseDialog dialog = new BaseDialog("", new DialogStyle(){
+                {
+                    // im lazy
+                    titleFont = Fonts.def;
+                    background = windowEmpty;
+                    titleFontColor = Pal.accent;
+                    stageBackground = Styles.black3;
+                }
+            });
+            dialog.addCloseButton();
+            dialog.buttons.setBackground(Styles.black9);
+            dialog.cont.pane(t -> {
+                t.add("@ui.calculator.help.content").width(mobile ? 350f : 500f).wrap().get().setAlignment(Align.left);
+                t.setBackground(Styles.black8);
+                t.margin(40f);
+            }).pad(4f).growY();
+            dialog.show();
+        });
         selectDialog.addCloseButton();
         filterSelectDialog.addCloseButton();
         balancingDialog.addCloseButton();
