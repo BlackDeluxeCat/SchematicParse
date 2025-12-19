@@ -15,6 +15,7 @@ import mindustry.ui.*;
 import mindustry.ui.dialogs.*;
 import mindustry.world.blocks.logic.*;
 import sp.struct.*;
+import sp.ui.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -57,6 +58,8 @@ public class SchematicParse extends Mod{
 
     public static void schelogic(){
         ui.schematics.buttons.button("@ui.calculator", () -> Calculator.ui.show());
+
+        ui.schematics.buttons.button("@ui.tagedit", () -> TagEditorDialog.tagEditor.show());
 
         SchematicsDialog.SchematicInfoDialog info = Reflect.get(SchematicsDialog.class, ui.schematics, "info");
 
